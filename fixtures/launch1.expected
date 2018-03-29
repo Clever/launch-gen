@@ -1,4 +1,4 @@
-package config
+package main
 
 import (
 	client1 "github.com/Clever/dapple/gen-go/client"
@@ -29,8 +29,8 @@ type Environment struct {
 	EnvVarB string
 }
 
-// Init creates a LaunchConfig
-func Init() LaunchConfig {
+// InitLaunchConfig creates a LaunchConfig
+func InitLaunchConfig() LaunchConfig {
 	workflowManager, err := client.NewFromDiscovery()
 	if err != nil {
 		log.Fatalf("discovery error: %s", err)

@@ -14,8 +14,8 @@ fixtures:
 	rm -f fixtures/*.expected
 	go run main.go fixtures/launch1.yml > fixtures/launch1.expected
 
-test: $(PKGS)
-	diff <(bin/launch-gen fixtures/launch1.yml) fixtures/launch1.expected
+test: $(PKGS) 
+	diff <(go run main.go fixtures/launch1.yml) fixtures/launch1.expected
 
 build: 
 	$(call golang-build,$(PKG),$(EXECUTABLE))
