@@ -6,9 +6,13 @@ PKG := github.com/Clever/launch-gen
 PKGS := $(shell go list ./... | grep -v /vendor)
 EXECUTABLE = $(shell basename $(PKG))
 
-.PHONY: test $(PKGS) run install_deps build
+.PHONY: test $(PKGS) run install_deps build fixtures
 
 $(eval $(call golang-version-check,1.9))
+
+fixtures:
+	rm -f fixtures/*.expected
+	go run main.go fixtures/launch1.yml > fixtures/launch1.expected
 
 test: $(PKGS)
 	diff <(bin/launch-gen fixtures/launch1.yml) fixtures/launch1.expected
