@@ -11,6 +11,7 @@ EXECUTABLE = $(shell basename $(PKG))
 $(eval $(call golang-version-check,1.9))
 
 test: $(PKGS)
+	diff <(bin/launch-gen fixtures/launch1.yml) fixtures/launch1.expected
 
 build: 
 	$(call golang-build,$(PKG),$(EXECUTABLE))
