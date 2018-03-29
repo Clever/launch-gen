@@ -1,2 +1,17 @@
 # launch-gen
-Generate config package from launch YML file
+
+Generate code from launch YML
+
+## Running
+
+Build it
+
+```
+make build
+```
+
+Run it
+
+```
+./bin/launch-gen <path-to-launch-yml>
+```
