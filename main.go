@@ -107,6 +107,24 @@ func main() {
 	}
 }
 
+var (
+	varOverrides []varOverride
+)
+
+type varOverride struct {
+	old string
+	new string
+}
+
+func init() {
+	varOverrides = []varOverride{
+		varOverride{
+			old: "Url",
+			new: "URL",
+		},
+	}
+}
+
 // FOO_BAR => FooBar
 // foo-bar => FooBar
 // foo => Foo
@@ -120,10 +138,16 @@ func toPublicVar(s string) string {
 		list = []string{s}
 	}
 
-	out := ""
+	titledVar := ""
 	for _, i := range list {
-		out += strings.Title(strings.ToLower(i))
+		titledVar += strings.Title(strings.ToLower(i))
 	}
+
+	out := titledVar
+	for _, override := range varOverrides {
+		out = strings.Replace(out, override.old, override.new, 1)
+	}
+
 	return out
 }
 
