@@ -58,9 +58,17 @@ func main() {
 	// Environment
 	envStruct := []Code{}
 	envInitDict := Dict{}
+	optionalEnvVars := []string{
+		// Not used in dev
+		"TRACING_ACCESS_TOKEN",
+	}
 	for _, s := range t.Env {
 		envStruct = append(envStruct, List(Id(toPublicVar(s))).String())
-		envInitDict[Id(toPublicVar(s))] = Id("requireEnvVar").Call(Lit(s))
+		if contains(optionalEnvVars, s) {
+			envInitDict[Id(toPublicVar(s))] = Id("os.Getenv").Call(Lit(s))
+		} else {
+			envInitDict[Id(toPublicVar(s))] = Id("requireEnvVar").Call(Lit(s))
+		}
 	}
 
 	f.Comment("Environment has environment variables and their values")
@@ -160,4 +168,13 @@ func toPrivateVar(s string) string {
 	}
 	out := toPublicVar(s)
 	return strings.ToLower(string(out[0])) + out[1:]
+}
+
+func contains(many []string, one string) bool {
+	for _, m := range many {
+		if m == one {
+			return true
+		}
+	}
+	return false
 }

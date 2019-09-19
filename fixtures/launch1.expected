@@ -25,8 +25,9 @@ type Dependencies struct {
 
 // Environment has environment variables and their values
 type Environment struct {
-	EnvVarA string
-	EnvVarB string
+	EnvVarA            string
+	EnvVarB            string
+	TracingAccessToken string
 }
 
 // InitLaunchConfig creates a LaunchConfig
@@ -45,8 +46,9 @@ func InitLaunchConfig() LaunchConfig {
 			WorkflowManager: workflowManager,
 		},
 		Env: Environment{
-			EnvVarA: requireEnvVar("ENV_VAR_A"),
-			EnvVarB: requireEnvVar("ENV_VAR_B"),
+			EnvVarA:            requireEnvVar("ENV_VAR_A"),
+			EnvVarB:            requireEnvVar("ENV_VAR_B"),
+			TracingAccessToken: os.Getenv("TRACING_ACCESS_TOKEN"),
 		},
 	}
 }
