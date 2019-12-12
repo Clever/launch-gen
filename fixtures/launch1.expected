@@ -1,4 +1,4 @@
-package main
+package packagename
 
 import (
 	client1 "github.com/Clever/dapple/gen-go/client"

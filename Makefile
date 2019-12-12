@@ -10,12 +10,12 @@ EXECUTABLE = $(shell basename $(PKG))
 
 $(eval $(call golang-version-check,1.13))
 
-fixtures:
+fixtures: build
 	rm -f fixtures/*.expected
-	go run main.go fixtures/launch1.yml > fixtures/launch1.expected
+	./bin/launch-gen -p packagename fixtures/launch1.yml > fixtures/launch1.expected
 
-test: $(PKGS) 
-	diff <(go run main.go fixtures/launch1.yml) fixtures/launch1.expected
+test: build $(PKGS)
+	diff <(./bin/launch-gen -p packagename fixtures/launch1.yml) fixtures/launch1.expected
 
 build: 
 	$(call golang-build,$(PKG),$(EXECUTABLE))
