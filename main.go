@@ -18,9 +18,33 @@ type LaunchYML struct {
 	Dependencies []string `yaml:"dependencies"`
 }
 
+type flagsSet map[string]bool
+
+func (fs *flagsSet) String() string {
+	if fs == nil {
+		return "nil"
+	}
+
+	values := make([]string, len(*fs))
+	i := 0
+	for k := range *fs {
+		values[i] = k
+		i++
+	}
+
+	return fmt.Sprintf("%s", values)
+}
+
+func (fs *flagsSet) Set(value string) error {
+	(*fs)[value] = true
+	return nil
+}
+
 func main() {
 	t := LaunchYML{}
 	packageName := flag.String("p", "main", "optional package name")
+	var skipDependencies flagsSet = map[string]bool{}
+	flag.Var(&skipDependencies, "skip-dependency", "Dependency to skip generating wag clients. Can be added mulitple times e.g. -skip-dependency a -skip-dependency b")
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {
@@ -52,6 +76,9 @@ func main() {
 	depsStruct := []Code{}
 	depsInitDict := Dict{}
 	for _, d := range t.Dependencies {
+		if _, ok := skipDependencies[d]; ok {
+			continue
+		}
 		depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", d), "Client"))
 		depsInitDict[Id(strings.Title(toPublicVar(d)))] = Id(toPrivateVar(d))
 	}
@@ -83,6 +110,9 @@ func main() {
 	lines := []Code{}
 	// Setup a wag client for each dependency
 	for _, d := range t.Dependencies {
+		if _, ok := skipDependencies[d]; ok {
+			continue
+		}
 		c := []Code{
 			List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", d), "NewFromDiscovery").Call(),
 			If(Err().Op("!=").Nil()).Block(

@@ -5,3 +5,4 @@ env:
 dependencies:
   - workflow-manager
   - dapple
+  - dependency-to-skip
