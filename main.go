@@ -43,12 +43,23 @@ func (fs *flagsSet) Set(value string) error {
 func main() {
 	t := LaunchYML{}
 	packageName := flag.String("p", "main", "optional package name")
+	outputFile := flag.String("o", "", "optional output to file. Default is stdout")
 	var skipDependencies flagsSet = map[string]bool{}
 	flag.Var(&skipDependencies, "skip-dependency", "Dependency to skip generating wag clients. Can be added mulitple times e.g. -skip-dependency a -skip-dependency b")
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {
 		log.Fatal("usage: launch-gen [-p <package_name>] <file>")
+	}
+
+	output := os.Stdout
+	if *outputFile != "" {
+		f, err := os.Create(*outputFile)
+		if err != nil {
+			log.Fatalf("error opening file '%s': %s", *outputFile, err)
+		}
+		defer f.Close()
+		output = f
 	}
 
 	data, err := ioutil.ReadFile(flag.Args()[0])
@@ -142,7 +153,7 @@ func main() {
 		Return(Id("val")),
 	)
 
-	err = f.Render(os.Stdout)
+	err = f.Render(output)
 	if err != nil {
 		panic(err)
 	}
