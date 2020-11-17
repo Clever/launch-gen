@@ -169,10 +169,15 @@ type varOverride struct {
 }
 
 func init() {
+	// Golint complains if certain strings are not capitalized
 	varOverrides = []varOverride{
 		varOverride{
 			old: "Url",
 			new: "URL",
+		},
+		varOverride{
+			old: "Id",
+			new: "ID",
 		},
 	}
 }
