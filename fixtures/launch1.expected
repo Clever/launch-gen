@@ -75,7 +75,7 @@ func requireEnvVar(s string) string {
 
 // getS3NameByEnv adds "-dev" to an env var name unless we're in "production" deploy env
 func getS3NameByEnv(s string) string {
-	env := os.Getenv("_DEPLOY_ENV")
+	env := os.Getenv("DEPLOY_ENV")
 	if env == "production" {
 		return s
 	}

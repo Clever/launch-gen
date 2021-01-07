@@ -178,7 +178,7 @@ func main() {
 
 	f.Comment(`getS3NameByEnv adds "-dev" to an env var name unless we're in "production" deploy env`)
 	f.Func().Id(funcGetS3NameByEnv).Params(Id("s").String()).String().Block(
-		Id("env").Op(":=").Qual("os", "Getenv").Call(Lit("_DEPLOY_ENV")),
+		Id("env").Op(":=").Qual("os", "Getenv").Call(Lit("DEPLOY_ENV")),
 		If(Id("env").Op("==").Lit("production")).Block(
 			Return(Id("s")),
 		),
