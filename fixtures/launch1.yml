@@ -9,8 +9,8 @@ dependencies:
 aws:
   s3:
     read:
-      - common-bucket
-      - read-bucket
+      - read-me
+      - read-and-write-me
     write:
-      - common-bucket
-      - write-bucket
+      - write-me
+      - read-and-write-me
