@@ -50,6 +50,14 @@ const (
 	funcGetS3NameByEnv = "getS3NameByEnv"
 )
 
+func sortedKeys(m map[string]struct{}) []string {
+	keys := []string{}
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 func main() {
 	t := LaunchYML{}
 	packageName := flag.String("p", "main", "optional package name")
@@ -138,7 +146,7 @@ func main() {
 		s3Buckets[bucket] = struct{}{}
 	}
 
-	for a := range s3Buckets {
+	for _, a := range sortedKeys(s3Buckets) {
 		name := "S3" + toPublicVar(a)
 		awsStruct = append(awsStruct, List(Id(name)).String())
 		awsInitDict[Id(name)] = Id(funcGetS3NameByEnv).Call(Lit(a))
