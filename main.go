@@ -133,7 +133,7 @@ func main() {
 		awsInitDict[Id(strings.Title(toPublicVar(a)))] = Id(funcGetS3NameByEnv).Call(Lit(a))
 	}
 
-	f.Comment("AWS contains string IDs that will help for accessing various AWS resources")
+	f.Comment("AwsResources contains string IDs that will help for accessing various AWS resources")
 	f.Type().Id("AwsResources").Struct(awsStruct...)
 
 	////////////////////

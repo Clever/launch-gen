@@ -30,7 +30,7 @@ type Environment struct {
 	TracingAccessToken string
 }
 
-// AWS contains string IDs that will help for accessing various AWS resources
+// AwsResources contains string IDs that will help for accessing various AWS resources
 type AwsResources struct {
 	MyBucket      string
 	AnotherBucket string
