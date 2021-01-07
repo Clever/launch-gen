@@ -47,7 +47,7 @@ func InitLaunchConfig() LaunchConfig {
 		log.Fatalf("discovery error: %s", err)
 	}
 	return LaunchConfig{
-		Aws: AwsResources{
+		AwsResources: AwsResources{
 			AnotherBucket: getS3NameByEnv("another-bucket"),
 			MyBucket:      getS3NameByEnv("my-bucket"),
 		},
