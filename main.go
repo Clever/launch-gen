@@ -126,10 +126,19 @@ func main() {
 	f.Comment("Environment has environment variables and their values")
 	f.Type().Id("Environment").Struct(envStruct...)
 
-	// AWS
+	// AWS Resources
 	awsStruct := []Code{}
 	awsInitDict := Dict{}
-	for _, a := range t.Aws.S3.Read {
+
+	s3Buckets := map[string]struct{}{}
+	for _, bucket := range t.Aws.S3.Read {
+		s3Buckets[bucket] = struct{}{}
+	}
+	for _, bucket := range t.Aws.S3.Write {
+		s3Buckets[bucket] = struct{}{}
+	}
+
+	for a := range s3Buckets {
 		awsStruct = append(awsStruct, List(Id(toPublicVar(a))).String())
 		awsInitDict[Id(strings.Title(toPublicVar(a)))] = Id(funcGetS3NameByEnv).Call(Lit(a))
 	}

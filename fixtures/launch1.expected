@@ -33,8 +33,9 @@ type Environment struct {
 
 // AwsResources contains string IDs that will help for accessing various AWS resources
 type AwsResources struct {
-	MyBucket      string
-	AnotherBucket string
+	CommonBucket string
+	ReadBucket   string
+	WriteBucket  string
 }
 
 // InitLaunchConfig creates a LaunchConfig
@@ -49,8 +50,9 @@ func InitLaunchConfig() LaunchConfig {
 	}
 	return LaunchConfig{
 		AwsResources: AwsResources{
-			AnotherBucket: getS3NameByEnv("another-bucket"),
-			MyBucket:      getS3NameByEnv("my-bucket"),
+			CommonBucket: getS3NameByEnv("common-bucket"),
+			ReadBucket:   getS3NameByEnv("read-bucket"),
+			WriteBucket:  getS3NameByEnv("write-bucket"),
 		},
 		Deps: Dependencies{
 			Dapple:          dapple,
