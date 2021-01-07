@@ -6,3 +6,8 @@ dependencies:
   - workflow-manager
   - dapple
   - dependency-to-skip
+aws:
+  s3:
+    read:
+      - my-bucket
+      - another-bucket

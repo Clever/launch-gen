@@ -16,6 +16,12 @@ import (
 type LaunchYML struct {
 	Env          []string `yaml:"env"`
 	Dependencies []string `yaml:"dependencies"`
+	Aws          struct {
+		S3 struct {
+			Read  []string `json:"read"`
+			Write []string `json:"write"`
+		} `json:"s3"`
+	} `json:"aws"`
 }
 
 type flagsSet map[string]bool
@@ -39,6 +45,10 @@ func (fs *flagsSet) Set(value string) error {
 	(*fs)[value] = true
 	return nil
 }
+
+const (
+	funcGetS3NameByEnv = "getS3NameByEnv"
+)
 
 func main() {
 	t := LaunchYML{}
@@ -115,6 +125,17 @@ func main() {
 	f.Comment("Environment has environment variables and their values")
 	f.Type().Id("Environment").Struct(envStruct...)
 
+	// AWS
+	awsStruct := []Code{}
+	awsInitDict := Dict{}
+	for _, a := range t.Aws.S3.Read {
+		awsStruct = append(awsStruct, List(Id(toPublicVar(a))).String())
+		awsInitDict[Id(strings.Title(toPublicVar(a)))] = Id(funcGetS3NameByEnv).Call(Lit(a))
+	}
+
+	f.Comment("AwsResources contains string IDs that will help for accessing various AWS resources")
+	f.Type().Id("AwsResources").Struct(awsStruct...)
+
 	////////////////////
 	// InitLaunchConfig() function
 	////////////////////
@@ -137,6 +158,7 @@ func main() {
 	ret := Return(Id("LaunchConfig").Values(Dict{
 		Id("Deps"): Id("Dependencies").Values(depsInitDict),
 		Id("Env"):  Id("Environment").Values(envInitDict),
+		Id("Aws"):  Id("AwsResources").Values(awsInitDict),
 	}))
 
 	lines = append(lines, ret)
@@ -144,13 +166,22 @@ func main() {
 	f.Comment("InitLaunchConfig creates a LaunchConfig")
 	f.Func().Id("InitLaunchConfig").Params().Id("LaunchConfig").Block(lines...)
 
-	// requireEnvVar function
+	f.Comment(`requireEnvVar exits the program immediately if an env var is not set`)
 	f.Func().Id("requireEnvVar").Params(Id("s").String()).String().Block(
 		Id("val").Op(":=").Qual("os", "Getenv").Call(Id("s")),
 		If(Id("val").Op("==").Lit("")).Block(
 			Qual("log", "Fatalf").Call(List(Lit("env var %s is not defined"), Id("s"))),
 		),
 		Return(Id("val")),
+	)
+
+	f.Comment(`getS3NameByEnv adds "-dev" to an env var name unless we're in "production" deploy env`)
+	f.Func().Id(funcGetS3NameByEnv).Params(Id("s").String()).String().Block(
+		Id("env").Op(":=").Qual("os", "Getenv").Call(Lit("_DEPLOY_ENV")),
+		If(Id("env").Op("==").Lit("production")).Block(
+			Return(Id("s")),
+		),
+		Return(Id("s").Op("+").Lit("-dev")),
 	)
 
 	err = f.Render(output)

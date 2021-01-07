@@ -30,6 +30,12 @@ type Environment struct {
 	TracingAccessToken string
 }
 
+// AwsResources contains string IDs that will help for accessing various AWS resources
+type AwsResources struct {
+	MyBucket      string
+	AnotherBucket string
+}
+
 // InitLaunchConfig creates a LaunchConfig
 func InitLaunchConfig() LaunchConfig {
 	workflowManager, err := client.NewFromDiscovery()
@@ -41,6 +47,10 @@ func InitLaunchConfig() LaunchConfig {
 		log.Fatalf("discovery error: %s", err)
 	}
 	return LaunchConfig{
+		Aws: AwsResources{
+			AnotherBucket: getS3NameByEnv("another-bucket"),
+			MyBucket:      getS3NameByEnv("my-bucket"),
+		},
 		Deps: Dependencies{
 			Dapple:          dapple,
 			WorkflowManager: workflowManager,
@@ -52,10 +62,21 @@ func InitLaunchConfig() LaunchConfig {
 		},
 	}
 }
+
+// requireEnvVar exits the program immediately if an env var is not set
 func requireEnvVar(s string) string {
 	val := os.Getenv(s)
 	if val == "" {
 		log.Fatalf("env var %s is not defined", s)
 	}
 	return val
+}
+
+// getS3NameByEnv adds "-dev" to an env var name unless we're in "production" deploy env
+func getS3NameByEnv(s string) string {
+	env := os.Getenv("_DEPLOY_ENV")
+	if env == "production" {
+		return s
+	}
+	return s + "-dev"
 }
