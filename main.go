@@ -156,9 +156,9 @@ func main() {
 
 	// Return the full launch Config
 	ret := Return(Id("LaunchConfig").Values(Dict{
-		Id("Deps"): Id("Dependencies").Values(depsInitDict),
-		Id("Env"):  Id("Environment").Values(envInitDict),
-		Id("Aws"):  Id("AwsResources").Values(awsInitDict),
+		Id("Deps"):         Id("Dependencies").Values(depsInitDict),
+		Id("Env"):          Id("Environment").Values(envInitDict),
+		Id("AwsResources"): Id("AwsResources").Values(awsInitDict),
 	}))
 
 	lines = append(lines, ret)
