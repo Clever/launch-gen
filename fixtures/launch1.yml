@@ -9,5 +9,8 @@ dependencies:
 aws:
   s3:
     read:
-      - my-bucket
-      - another-bucket
+      - read-me
+      - read-and-write-me
+    write:
+      - write-me
+      - read-and-write-me
