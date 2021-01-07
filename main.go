@@ -91,6 +91,7 @@ func main() {
 	f.Type().Id("LaunchConfig").Struct(
 		Id("Deps").Id("Dependencies"),
 		Id("Env").Id("Environment"),
+		Id("AwsResources"),
 	)
 
 	// Dependencies
