@@ -31,8 +31,8 @@ type Environment struct {
 
 // AwsResources contains string IDs that will help for accessing various AWS resources
 type AwsResources struct {
-	S3ReadMe         string
 	S3ReadAndWriteMe string
+	S3ReadMe         string
 	S3WriteMe        string
 }
 
