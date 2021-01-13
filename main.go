@@ -194,8 +194,15 @@ func main() {
 	)
 
 	f.Comment(`getS3NameByEnv adds "-dev" to an env var name unless we're in "production" deploy env`)
+	f.Comment(`We check both DEPLOY_ENV and _DEPLOY_ENV env vars, which are injected by our deployment system for Lambda and non-Lambda deployments, respectively`)
 	f.Func().Id(funcGetS3NameByEnv).Params(Id("s").String()).String().Block(
 		Id("env").Op(":=").Qual("os", "Getenv").Call(Lit("DEPLOY_ENV")),
+		If(Id("env").Op("==").Lit("")).Block(
+			Id("env").Op("=").Qual("os", "Getenv").Call(Lit("_DEPLOY_ENV")),
+		),
+		If(Id("env").Op("==").Lit("")).Block(
+			Qual("log", "Fatal").Call(List(Lit("Unable to determine deployment environment (DEPLOY_ENV and _DEPLOY_ENV are undefined)"))),
+		),
 		If(Id("env").Op("==").Lit("production")).Block(
 			Return(Id("s")),
 		),
