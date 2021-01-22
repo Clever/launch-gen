@@ -14,3 +14,10 @@ aws:
     write:
       - write-me
       - read-and-write-me
+  sqs:
+    read:
+      - read-me
+      - read-and-write-me
+    write:
+      - write-me
+      - read-and-write-me

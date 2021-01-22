@@ -22,6 +22,10 @@ type LaunchYML struct {
 			Read  []string `json:"read"`
 			Write []string `json:"write"`
 		} `json:"s3"`
+		SQS struct {
+			Read  []string `json:"read"`
+			Write []string `json:"write"`
+		} `json:"sqs"`
 	} `json:"aws"`
 }
 
@@ -48,7 +52,7 @@ func (fs *flagsSet) Set(value string) error {
 }
 
 const (
-	funcGetS3NameByEnv = "getS3NameByEnv"
+	getAWSNameByEnv = "getAWSNameByEnv"
 )
 
 func sortedKeys(m map[string]struct{}) []string {
@@ -139,18 +143,16 @@ func main() {
 	awsStruct := []Code{}
 	awsInitDict := Dict{}
 
-	s3Buckets := map[string]struct{}{}
-	for _, bucket := range t.Aws.S3.Read {
-		s3Buckets[bucket] = struct{}{}
-	}
-	for _, bucket := range t.Aws.S3.Write {
-		s3Buckets[bucket] = struct{}{}
+	s3Code, s3Dict := getS3Buckets(t)
+	awsStruct = append(awsStruct, s3Code...)
+	for k, v := range s3Dict {
+		awsInitDict[k] = v
 	}
 
-	for _, a := range sortedKeys(s3Buckets) {
-		name := "S3" + toPublicVar(a)
-		awsStruct = append(awsStruct, List(Id(name)).String())
-		awsInitDict[Id(name)] = Id(funcGetS3NameByEnv).Call(Lit(a))
+	sqsCode, sqsDict := getSQSQueues(t)
+	awsStruct = append(awsStruct, sqsCode...)
+	for k, v := range sqsDict {
+		awsInitDict[k] = v
 	}
 
 	f.Comment("AwsResources contains string IDs that will help for accessing various AWS resources")
@@ -195,9 +197,9 @@ func main() {
 		Return(Id("val")),
 	)
 
-	f.Comment(`getS3NameByEnv adds "-dev" to an env var name unless we're in "production" deploy env`)
+	f.Comment(fmt.Sprintf(`%s computes the resource name and adds "-dev" unless deploy env is "production"`, getAWSNameByEnv))
 	f.Comment(`We check both DEPLOY_ENV and _DEPLOY_ENV env vars, which are injected by our deployment system for Lambda and non-Lambda deployments, respectively`)
-	f.Func().Id(funcGetS3NameByEnv).Params(Id("s").String()).String().Block(
+	f.Func().Id(getAWSNameByEnv).Params(Id("s").String()).String().Block(
 		Id("env").Op(":=").Qual("os", "Getenv").Call(Lit("DEPLOY_ENV")),
 		If(Id("env").Op("==").Lit("")).Block(
 			Id("env").Op("=").Qual("os", "Getenv").Call(Lit("_DEPLOY_ENV")),
@@ -284,4 +286,47 @@ func contains(many []string, one string) bool {
 		}
 	}
 	return false
+}
+
+////////////////////
+// AWS Resources
+////////////////////
+func getS3Buckets(t LaunchYML) ([]Code, Dict) {
+	code := []Code{}
+	dict := Dict{}
+	s3Buckets := map[string]struct{}{}
+	for _, bucket := range t.Aws.S3.Read {
+		s3Buckets[bucket] = struct{}{}
+	}
+	for _, bucket := range t.Aws.S3.Write {
+		s3Buckets[bucket] = struct{}{}
+	}
+
+	for _, a := range sortedKeys(s3Buckets) {
+		name := "S3" + toPublicVar(a)
+		code = append(code, List(Id(name)).String())
+		dict[Id(name)] = Id(getAWSNameByEnv).Call(Lit(a))
+	}
+
+	return code, dict
+}
+
+func getSQSQueues(t LaunchYML) ([]Code, Dict) {
+	code := []Code{}
+	dict := Dict{}
+	items := map[string]struct{}{}
+	for _, bucket := range t.Aws.SQS.Read {
+		items[bucket] = struct{}{}
+	}
+	for _, bucket := range t.Aws.SQS.Write {
+		items[bucket] = struct{}{}
+	}
+
+	for _, a := range sortedKeys(items) {
+		name := "SQS" + toPublicVar(a)
+		code = append(code, List(Id(name)).String())
+		dict[Id(name)] = Id(getAWSNameByEnv).Call(Lit(a))
+	}
+
+	return code, dict
 }

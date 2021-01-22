@@ -31,9 +31,12 @@ type Environment struct {
 
 // AwsResources contains string IDs that will help for accessing various AWS resources
 type AwsResources struct {
-	S3ReadAndWriteMe string
-	S3ReadMe         string
-	S3WriteMe        string
+	S3ReadAndWriteMe  string
+	S3ReadMe          string
+	S3WriteMe         string
+	SQSReadAndWriteMe string
+	SQSReadMe         string
+	SQSWriteMe        string
 }
 
 // InitLaunchConfig creates a LaunchConfig
@@ -48,9 +51,12 @@ func InitLaunchConfig() LaunchConfig {
 	}
 	return LaunchConfig{
 		AwsResources: AwsResources{
-			S3ReadAndWriteMe: getS3NameByEnv("read-and-write-me"),
-			S3ReadMe:         getS3NameByEnv("read-me"),
-			S3WriteMe:        getS3NameByEnv("write-me"),
+			S3ReadAndWriteMe:  getAWSNameByEnv("read-and-write-me"),
+			S3ReadMe:          getAWSNameByEnv("read-me"),
+			S3WriteMe:         getAWSNameByEnv("write-me"),
+			SQSReadAndWriteMe: getAWSNameByEnv("read-and-write-me"),
+			SQSReadMe:         getAWSNameByEnv("read-me"),
+			SQSWriteMe:        getAWSNameByEnv("write-me"),
 		},
 		Deps: Dependencies{
 			Dapple:          dapple,
@@ -73,9 +79,9 @@ func requireEnvVar(s string) string {
 	return val
 }
 
-// getS3NameByEnv adds "-dev" to an env var name unless we're in "production" deploy env
+// getAWSNameByEnv computes the resource name and adds "-dev" unless deploy env is "production"
 // We check both DEPLOY_ENV and _DEPLOY_ENV env vars, which are injected by our deployment system for Lambda and non-Lambda deployments, respectively
-func getS3NameByEnv(s string) string {
+func getAWSNameByEnv(s string) string {
 	env := os.Getenv("DEPLOY_ENV")
 	if env == "" {
 		env = os.Getenv("_DEPLOY_ENV")
