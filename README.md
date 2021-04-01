@@ -43,6 +43,13 @@ install_deps:
 //go:generate sh -c "$PWD/bin/launch-gen -o launch.go -p main $PWD/launch/<your-application>.yml"
 ```
 
+If you scope the current project's `/bin/` to the Makefile's path, then you can simplify the stanza:
+
+```golang
+// generate launch config
+//go:generate launch-gen -o launch.go -p main $PWD/launch/<your-application>.yml
+```
+
 5. Ensure you call `go generate ./...` in the Makefile for paths that would be relevant for building or running the application. This allows the `//go:generate` stanza to run, which helps with building.
 
 For example:
