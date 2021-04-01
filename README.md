@@ -16,7 +16,7 @@ Run it
 ./bin/launch-gen <path-to-launch-yml>
 ```
 
-## Using within a golang repo
+## Migrating to use in a Golang repo
 
 This assumes you have a `go mod` repo.
 
