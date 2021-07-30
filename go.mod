@@ -1,6 +1,6 @@
 module github.com/Clever/launch-gen
 
-go 1.15
+go 1.16
 
 require (
 	github.com/dave/jennifer v1.4.1

@@ -3,7 +3,7 @@ jobs:
   build:
     working_directory: /go/src/github.com/Clever/launch-gen
     docker:
-    - image: circleci/golang:1.13-stretch
+    - image: circleci/golang:1.16-stretch
     steps:
     - run:
         command: cd $HOME && git clone --depth 1 -v https://github.com/Clever/ci-scripts.git && cd ci-scripts && git show --oneline -s
