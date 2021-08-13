@@ -28,9 +28,14 @@ func Test_toPublicVar(t *testing.T) {
 			expected: "FooBarURL",
 		},
 		{
-			name:     "respects Url -> URL override",
+			name:     "respects Id -> ID override",
 			input:    "foo_bar_id",
 			expected: "FooBarID",
+		},
+		{
+			name:     "respects Api -> API override",
+			input:    "foo_bar_api",
+			expected: "FooBarAPI",
 		},
 	}
 	for _, tt := range tests {

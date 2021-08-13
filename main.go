@@ -237,6 +237,10 @@ func init() {
 			old: "Id",
 			new: "ID",
 		},
+		varOverride{
+			old: "Api",
+			new: "API",
+		},
 	}
 }
 
