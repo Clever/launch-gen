@@ -188,8 +188,8 @@ func main() {
 
 	f.Comment(`requireEnvVar exits the program immediately if an env var is not set`)
 	f.Func().Id("requireEnvVar").Params(Id("s").String()).String().Block(
-		Id("val").Op(":=").Qual("os", "Getenv").Call(Id("s")),
-		If(Id("val").Op("==").Lit("")).Block(
+		List(Id("val"), Id("present")).Op(":=").Qual("os", "LookupEnv").Call(Id("s")),
+		If(Op("!").Id("present")).Block(
 			Qual("log", "Fatalf").Call(List(Lit("env var %s is not defined"), Id("s"))),
 		),
 		Return(Id("val")),
