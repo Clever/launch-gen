@@ -66,8 +66,8 @@ func InitLaunchConfig() LaunchConfig {
 
 // requireEnvVar exits the program immediately if an env var is not set
 func requireEnvVar(s string) string {
-	val := os.Getenv(s)
-	if val == "" {
+	val, present := os.LookupEnv(s)
+	if !present {
 		log.Fatalf("env var %s is not defined", s)
 	}
 	return val
