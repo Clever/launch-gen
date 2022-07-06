@@ -138,7 +138,7 @@ func main() {
 		Id("AwsResources"),
 	)
 
-	// parseOverrideDependencies parses the list of dependencies to be overwridden into a map
+	// parseOverrideDependencies parses the list of dependencies to be overwritten into a map
 	overrideDependenciesMap := parseOverrideDependencies(*overrideDependenciesString, t.Dependencies)
 
 	// Dependencies
@@ -211,20 +211,17 @@ func main() {
 		}
 		c := []Code{}
 
-		if replacementString, ok := overrideDependenciesMap[d]; ok {
-			c = []Code{
-				List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "NewFromDiscovery").Call(),
-				If(Err().Op("!=").Nil()).Block(
-					Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
-				),
-			}
-		} else {
-			c = []Code{
-				List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", d), "NewFromDiscovery").Call(),
-				If(Err().Op("!=").Nil()).Block(
-					Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
-				),
-			}
+		// checking to see if the dependency name has to be overwritten
+		replacementString, ok := overrideDependenciesMap[d]
+		if !ok {
+			replacementString = d
+		}
+
+		c = []Code{
+			List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "NewFromDiscovery").Call(),
+			If(Err().Op("!=").Nil()).Block(
+				Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
+			),
 		}
 
 		lines = append(lines, c...)
