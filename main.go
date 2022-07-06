@@ -70,7 +70,10 @@ func main() {
 	flag.Parse()
 
 	// parsing through the list of overrides to make an original:new string map
-	overrideDependenciesList := strings.Split(*overrideDependenciesString, ",")
+	var overrideDependenciesList []string
+	if len(*overrideDependenciesString) > 3 {
+		overrideDependenciesList = strings.Split(*overrideDependenciesString, ",")
+	}
 	overrideDependenciesMap := make(map[string]string)
 
 	for _, s := range overrideDependenciesList {
