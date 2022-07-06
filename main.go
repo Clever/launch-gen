@@ -60,6 +60,40 @@ func sortedKeys(m map[string]struct{}) []string {
 	return keys
 }
 
+func parseOverrideDependencies(s string, dependencies []string) map[string]string {
+
+	// parsing through the list of overrides to make an original:new string map
+	var overrideDependenciesList []string
+	if len(s) > 3 {
+		overrideDependenciesList = strings.Split(s, ",")
+	}
+	overrideDependenciesMap := make(map[string]string)
+
+	for _, s := range overrideDependenciesList {
+		depReplacementArr := strings.Split(s, ":")
+
+		if len(depReplacementArr) != 2 || depReplacementArr[1] == "" {
+			log.Fatal("usage: invalid formatting for the -d flag")
+		}
+
+		flag := 0
+		for _, d := range dependencies {
+			if d == depReplacementArr[0] {
+				flag = 1
+				break
+			}
+		}
+
+		if flag == 0 {
+			log.Fatal("that is not a dependency specified in the yml provided")
+		}
+
+		overrideDependenciesMap[depReplacementArr[0]] = depReplacementArr[1]
+	}
+
+	return overrideDependenciesMap
+}
+
 func main() {
 	t := LaunchYML{}
 	packageName := flag.String("p", "main", "optional package name")
@@ -68,37 +102,6 @@ func main() {
 	flag.Var(&skipDependencies, "skip-dependency", "Dependency to skip generating wag clients. Can be added mulitple times e.g. -skip-dependency a -skip-dependency b")
 	overrideDependenciesString := flag.String("d", "", "Dependency name to override. You can provide multiple dependencies in the format dep1:replacementDep1,dep2:replacementDep2,...")
 	flag.Parse()
-
-	// parsing through the list of overrides to make an original:new string map
-	var overrideDependenciesList []string
-	if len(*overrideDependenciesString) > 3 {
-		overrideDependenciesList = strings.Split(*overrideDependenciesString, ",")
-	}
-	overrideDependenciesMap := make(map[string]string)
-
-	for _, s := range overrideDependenciesList {
-		tempArr := strings.Split(s, ":")
-
-		if len(tempArr) != 2 || tempArr[1] == "" {
-			log.Fatal("usage: invalid formatting for the -d flag")
-		}
-
-		flag := 0
-		for _, d := range t.Dependencies {
-			if d == tempArr[0] {
-				flag = 1
-			}
-		}
-
-		if flag == 0 { // if a dependency provided along with the override flag is not in the dependencies on the yml
-			log.Fatal("that is not a dependency specified in the yml provided")
-		}
-
-		original := tempArr[0]
-		new := tempArr[1]
-
-		overrideDependenciesMap[original] = new
-	}
 
 	if len(flag.Args()) < 1 {
 		log.Fatal("usage: launch-gen [-p <package_name>] <file>")
@@ -135,6 +138,9 @@ func main() {
 		Id("AwsResources"),
 	)
 
+	// parseOverrideDependencies parses the list of dependencies to be overwridden into a map
+	overrideDependenciesMap := parseOverrideDependencies(*overrideDependenciesString, t.Dependencies)
+
 	// Dependencies
 	depsStruct := []Code{}
 	depsInitDict := Dict{}
@@ -142,11 +148,13 @@ func main() {
 		if _, ok := skipDependencies[d]; ok {
 			continue
 		}
-		if replacementString, ok := overrideDependenciesMap[d]; ok {
-			depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "Client"))
-		} else {
-			depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", d), "Client"))
+
+		importPackage, ok := overrideDependenciesMap[d]
+		if !ok {
+			importPackage = d
 		}
+
+		depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", importPackage), "Client"))
 		depsInitDict[Id(strings.Title(toPublicVar(d)))] = Id(toPrivateVar(d))
 	}
 	f.Comment("Dependencies has clients for the service's dependencies")
