@@ -66,7 +66,36 @@ func main() {
 	outputFile := flag.String("o", "", "optional output to file. Default is stdout")
 	var skipDependencies flagsSet = map[string]bool{}
 	flag.Var(&skipDependencies, "skip-dependency", "Dependency to skip generating wag clients. Can be added mulitple times e.g. -skip-dependency a -skip-dependency b")
+	overrideDependenciesString := flag.String("d", "", "Dependency name to override. You can provide multiple dependencies in the format dep1:replacementDep1,dep2:replacementDep2,...")
 	flag.Parse()
+
+	// parsing through the list of overrides to make an original:new string map
+	overrideDependenciesList := strings.Split(*overrideDependenciesString, ",")
+	overrideDependenciesMap := make(map[string]string)
+
+	for _, s := range overrideDependenciesList {
+		tempArr := strings.Split(s, ":")
+
+		if len(tempArr) != 2 || tempArr[1] == "" {
+			log.Fatal("usage: invalid formatting for the -d flag")
+		}
+
+		flag := 0
+		for _, d := range t.Dependencies {
+			if d == tempArr[0] {
+				flag = 1
+			}
+		}
+
+		if flag == 0 { // if a dependency provided along with the override flag is not in the dependencies on the yml
+			log.Fatal("that is not a dependency specified in the yml provided")
+		}
+
+		original := tempArr[0]
+		new := tempArr[1]
+
+		overrideDependenciesMap[original] = new
+	}
 
 	if len(flag.Args()) < 1 {
 		log.Fatal("usage: launch-gen [-p <package_name>] <file>")
@@ -110,7 +139,11 @@ func main() {
 		if _, ok := skipDependencies[d]; ok {
 			continue
 		}
-		depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", d), "Client"))
+		if replacementString, ok := overrideDependenciesMap[d]; ok {
+			depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "Client"))
+		} else {
+			depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", d), "Client"))
+		}
 		depsInitDict[Id(strings.Title(toPublicVar(d)))] = Id(toPrivateVar(d))
 	}
 	f.Comment("Dependencies has clients for the service's dependencies")
@@ -165,12 +198,24 @@ func main() {
 		if _, ok := skipDependencies[d]; ok {
 			continue
 		}
-		c := []Code{
-			List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", d), "NewFromDiscovery").Call(),
-			If(Err().Op("!=").Nil()).Block(
-				Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
-			),
+		c := []Code{}
+
+		if replacementString, ok := overrideDependenciesMap[d]; ok {
+			c = []Code{
+				List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "NewFromDiscovery").Call(),
+				If(Err().Op("!=").Nil()).Block(
+					Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
+				),
+			}
+		} else {
+			c = []Code{
+				List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", d), "NewFromDiscovery").Call(),
+				If(Err().Op("!=").Nil()).Block(
+					Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
+				),
+			}
 		}
+
 		lines = append(lines, c...)
 	}
 
