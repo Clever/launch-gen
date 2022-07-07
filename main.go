@@ -60,12 +60,49 @@ func sortedKeys(m map[string]struct{}) []string {
 	return keys
 }
 
+func parseOverrideDependencies(overrideDependenciesString *string, dependencies []string) map[string]string {
+
+	// parsing through the list of overrides to make an original:new string map
+
+	overrideDependenciesMap := make(map[string]string)
+
+	if overrideDependenciesString == nil || *overrideDependenciesString == "" {
+		return overrideDependenciesMap
+	}
+
+	overrideDependenciesList := strings.Split(*overrideDependenciesString, ",")
+	for _, overrideRule := range overrideDependenciesList {
+		depReplacementArr := strings.Split(overrideRule, ":")
+
+		if len(depReplacementArr) != 2 || depReplacementArr[1] == "" {
+			log.Fatal("usage: invalid formatting for the -d flag")
+		}
+
+		flag := 0
+		for _, d := range dependencies {
+			if d == depReplacementArr[0] {
+				flag = 1
+				break
+			}
+		}
+
+		if flag == 0 {
+			log.Fatal(depReplacementArr[0], " is not a dependency specified in the provided yaml file")
+		}
+
+		overrideDependenciesMap[depReplacementArr[0]] = depReplacementArr[1]
+	}
+
+	return overrideDependenciesMap
+}
+
 func main() {
 	t := LaunchYML{}
 	packageName := flag.String("p", "main", "optional package name")
 	outputFile := flag.String("o", "", "optional output to file. Default is stdout")
 	var skipDependencies flagsSet = map[string]bool{}
 	flag.Var(&skipDependencies, "skip-dependency", "Dependency to skip generating wag clients. Can be added mulitple times e.g. -skip-dependency a -skip-dependency b")
+	overrideDependenciesString := flag.String("d", "", "Dependency name to override. You can provide multiple dependencies in the format dep1:replacementDep1,dep2:replacementDep2,...")
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {
@@ -103,6 +140,9 @@ func main() {
 		Id("AwsResources"),
 	)
 
+	// parseOverrideDependencies parses the list of dependencies to be overwritten into a map
+	overrideDependenciesMap := parseOverrideDependencies(overrideDependenciesString, t.Dependencies)
+
 	// Dependencies
 	depsStruct := []Code{}
 	depsInitDict := Dict{}
@@ -110,7 +150,13 @@ func main() {
 		if _, ok := skipDependencies[d]; ok {
 			continue
 		}
-		depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", d), "Client"))
+
+		importPackage, ok := overrideDependenciesMap[d]
+		if !ok {
+			importPackage = d
+		}
+
+		depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", importPackage), "Client"))
 		depsInitDict[Id(strings.Title(toPublicVar(d)))] = Id(toPrivateVar(d))
 	}
 	f.Comment("Dependencies has clients for the service's dependencies")
@@ -165,12 +211,21 @@ func main() {
 		if _, ok := skipDependencies[d]; ok {
 			continue
 		}
-		c := []Code{
-			List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", d), "NewFromDiscovery").Call(),
+		c := []Code{}
+
+		// checking to see if the dependency name has to be overwritten
+		replacementString, ok := overrideDependenciesMap[d]
+		if !ok {
+			replacementString = d
+		}
+
+		c = []Code{
+			List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "NewFromDiscovery").Call(),
 			If(Err().Op("!=").Nil()).Block(
 				Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
 			),
 		}
+
 		lines = append(lines, c...)
 	}
 
