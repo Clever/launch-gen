@@ -60,14 +60,17 @@ func sortedKeys(m map[string]struct{}) []string {
 	return keys
 }
 
-func parseOverrideDependencies(overrideDependenciesString string, dependencies []string) map[string]string {
+func parseOverrideDependencies(overrideDependenciesString *string, dependencies []string) map[string]string {
 
 	// parsing through the list of overrides to make an original:new string map
-	var overrideDependenciesList []string
 
-	overrideDependenciesList = strings.Split(overrideDependenciesString, ",")
 	overrideDependenciesMap := make(map[string]string)
 
+	if overrideDependenciesString == nil || *overrideDependenciesString == "" {
+		return overrideDependenciesMap
+	}
+
+	overrideDependenciesList := strings.Split(*overrideDependenciesString, ",")
 	for _, overrideRule := range overrideDependenciesList {
 		depReplacementArr := strings.Split(overrideRule, ":")
 
@@ -91,17 +94,6 @@ func parseOverrideDependencies(overrideDependenciesString string, dependencies [
 	}
 
 	return overrideDependenciesMap
-}
-
-// helper function that takes in a flag name and returns true if the flag was passed as an argument
-func isFlagPassed(name string) bool {
-	found := false
-	flag.Visit(func(f *flag.Flag) {
-		if f.Name == name {
-			found = true
-		}
-	})
-	return found
 }
 
 func main() {
@@ -149,15 +141,7 @@ func main() {
 	)
 
 	// parseOverrideDependencies parses the list of dependencies to be overwritten into a map
-	var overrideDependenciesMap map[string]string
-
-	if isFlagPassed("d") {
-		if overrideDependenciesString != nil {
-			overrideDependenciesMap = parseOverrideDependencies(*overrideDependenciesString, t.Dependencies)
-		} else {
-			log.Fatal("invalid dependency override arguments provided.")
-		}
-	}
+	overrideDependenciesMap := parseOverrideDependencies(overrideDependenciesString, t.Dependencies)
 
 	// Dependencies
 	depsStruct := []Code{}
