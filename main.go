@@ -60,17 +60,16 @@ func sortedKeys(m map[string]struct{}) []string {
 	return keys
 }
 
-func parseOverrideDependencies(s string, dependencies []string) map[string]string {
+func parseOverrideDependencies(overrideDependenciesString string, dependencies []string) map[string]string {
 
 	// parsing through the list of overrides to make an original:new string map
 	var overrideDependenciesList []string
-	if len(s) > 3 {
-		overrideDependenciesList = strings.Split(s, ",")
-	}
+
+	overrideDependenciesList = strings.Split(overrideDependenciesString, ",")
 	overrideDependenciesMap := make(map[string]string)
 
-	for _, s := range overrideDependenciesList {
-		depReplacementArr := strings.Split(s, ":")
+	for _, overrideRule := range overrideDependenciesList {
+		depReplacementArr := strings.Split(overrideRule, ":")
 
 		if len(depReplacementArr) != 2 || depReplacementArr[1] == "" {
 			log.Fatal("usage: invalid formatting for the -d flag")
@@ -85,13 +84,24 @@ func parseOverrideDependencies(s string, dependencies []string) map[string]strin
 		}
 
 		if flag == 0 {
-			log.Fatal("that is not a dependency specified in the yml provided")
+			log.Fatal(depReplacementArr[0], " is not a dependency specified in the provided yaml file")
 		}
 
 		overrideDependenciesMap[depReplacementArr[0]] = depReplacementArr[1]
 	}
 
 	return overrideDependenciesMap
+}
+
+// helper function that takes in a flag name and returns true if the flag was passed as an argument
+func isFlagPassed(name string) bool {
+	found := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
 }
 
 func main() {
@@ -139,7 +149,15 @@ func main() {
 	)
 
 	// parseOverrideDependencies parses the list of dependencies to be overwritten into a map
-	overrideDependenciesMap := parseOverrideDependencies(*overrideDependenciesString, t.Dependencies)
+	var overrideDependenciesMap map[string]string
+
+	if isFlagPassed("d") {
+		if overrideDependenciesString != nil {
+			overrideDependenciesMap = parseOverrideDependencies(*overrideDependenciesString, t.Dependencies)
+		} else {
+			log.Fatal("invalid dependency override arguments provided.")
+		}
+	}
 
 	// Dependencies
 	depsStruct := []Code{}
