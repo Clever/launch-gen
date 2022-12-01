@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -109,6 +110,11 @@ func main() {
 		log.Fatal("usage: launch-gen [-p <package_name>] <file>")
 	}
 
+	needWagV9Clients := false
+	if _, err := os.Stat("gen-go/models/go.mod"); err == nil || !errors.Is(err, os.ErrNotExist) {
+		needWagV9Clients = true
+	}
+
 	output := os.Stdout
 	if *outputFile != "" {
 		f, err := os.Create(*outputFile)
@@ -211,7 +217,6 @@ func main() {
 		if _, ok := skipDependencies[d]; ok {
 			continue
 		}
-		c := []Code{}
 
 		// checking to see if the dependency name has to be overwritten
 		replacementString, ok := overrideDependenciesMap[d]
@@ -219,11 +224,21 @@ func main() {
 			replacementString = d
 		}
 
-		c = []Code{
-			List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "NewFromDiscovery").Call(),
-			If(Err().Op("!=").Nil()).Block(
-				Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
-			),
+		var c []Code
+		if needWagV9Clients {
+			c = []Code{
+				List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "NewFromDiscovery").Call(Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "WithLogger").Call(Qual("github.com/Clever/kayvee-go/v7/logger", "NewConcreteLogger").Call(Lit(fmt.Sprintf("%s-wagclient", d))))),
+				If(Err().Op("!=").Nil()).Block(
+					Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
+				),
+			}
+		} else {
+			c = []Code{
+				List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "NewFromDiscovery").Call(),
+				If(Err().Op("!=").Nil()).Block(
+					Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
+				),
+			}
 		}
 
 		lines = append(lines, c...)

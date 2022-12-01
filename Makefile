@@ -14,8 +14,13 @@ fixtures: build
 	rm -f fixtures/*.expected
 	./bin/launch-gen -p packagename -skip-dependency dependency-to-skip fixtures/launch1.yml > fixtures/launch1.expected
 
-test: build $(PKGS)
+test: build $(PKGS) test-wag-v9
+
+test-pre-wag-v9:
 	diff <(./bin/launch-gen -p packagename -skip-dependency dependency-to-skip fixtures/launch1.yml) fixtures/launch1.expected
+
+test-wag-v9:
+	cd fixtures_wagv9; diff <(../bin/launch-gen -p packagename -skip-dependency dependency-to-skip launch1.yml) launch1.expected
 
 build:
 	$(call golang-build,$(PKG),$(EXECUTABLE))
