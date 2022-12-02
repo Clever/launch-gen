@@ -100,6 +100,7 @@ func main() {
 	t := LaunchYML{}
 	packageName := flag.String("p", "main", "optional package name")
 	outputFile := flag.String("o", "", "optional output to file. Default is stdout")
+	needWagV9Clients := flag.Bool("wagv9", false, "optional param to create all wag clients as wag v9 clients")
 	var skipDependencies flagsSet = map[string]bool{}
 	flag.Var(&skipDependencies, "skip-dependency", "Dependency to skip generating wag clients. Can be added mulitple times e.g. -skip-dependency a -skip-dependency b")
 	overrideDependenciesString := flag.String("d", "", "Dependency name to override. You can provide multiple dependencies in the format dep1:replacementDep1,dep2:replacementDep2,...")
@@ -211,7 +212,6 @@ func main() {
 		if _, ok := skipDependencies[d]; ok {
 			continue
 		}
-		c := []Code{}
 
 		// checking to see if the dependency name has to be overwritten
 		replacementString, ok := overrideDependenciesMap[d]
@@ -219,11 +219,25 @@ func main() {
 			replacementString = d
 		}
 
-		c = []Code{
-			List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "NewFromDiscovery").Call(),
-			If(Err().Op("!=").Nil()).Block(
-				Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
-			),
+		var c []Code
+		if *needWagV9Clients {
+			c = []Code{
+				List(Id(toPrivateVar(d)), Err()).Op(":=").
+					Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "NewFromDiscovery").
+					Call(Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "WithLogger").
+						Call(Qual("github.com/Clever/kayvee-go/v7/logger", "NewConcreteLogger").
+							Call(Lit(fmt.Sprintf("%s-wagclient", d))))),
+				If(Err().Op("!=").Nil()).Block(
+					Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
+				),
+			}
+		} else {
+			c = []Code{
+				List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "NewFromDiscovery").Call(),
+				If(Err().Op("!=").Nil()).Block(
+					Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
+				),
+			}
 		}
 
 		lines = append(lines, c...)

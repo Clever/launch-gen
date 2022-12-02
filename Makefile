@@ -13,9 +13,11 @@ $(eval $(call golang-version-check,1.13))
 fixtures: build
 	rm -f fixtures/*.expected
 	./bin/launch-gen -p packagename -skip-dependency dependency-to-skip fixtures/launch1.yml > fixtures/launch1.expected
+	./bin/launch-gen --wagv9 -p packagename -skip-dependency dependency-to-skip fixtures/launch2.yml > fixtures/launch2.expected
 
 test: build $(PKGS)
 	diff <(./bin/launch-gen -p packagename -skip-dependency dependency-to-skip fixtures/launch1.yml) fixtures/launch1.expected
+	diff <(./bin/launch-gen --wagv9 -p packagename -skip-dependency dependency-to-skip fixtures/launch2.yml) fixtures/launch2.expected
 
 build:
 	$(call golang-build,$(PKG),$(EXECUTABLE))
