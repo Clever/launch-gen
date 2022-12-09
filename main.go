@@ -213,6 +213,13 @@ func main() {
 	// InitLaunchConfig() function
 	////////////////////
 	lines := []Code{}
+	if *needWagV9Clients {
+		lines = append(lines, []Code{
+			If(Id("exp").Op("==").Nil().Block(
+				Id("exp").Op("=").Qual("go.opentelemetry.io/otel/sdk/trace/tracetest", "NewNoopExporter").Call(),
+			)),
+		}...)
+	}
 	// Setup a wag client for each dependency
 	for _, d := range t.Dependencies {
 		if _, ok := skipDependencies[d]; ok {
@@ -235,9 +242,10 @@ func main() {
 			c = []Code{
 				List(Id(toPrivateVar(d)), Err()).Op(":=").
 					Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "NewFromDiscovery").
-					Call(Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "WithLogger").
-						Call(Qual("github.com/Clever/kayvee-go/v7/logger", "NewConcreteLogger").
-							Call(Lit(fmt.Sprintf("%s-wagclient", d))))),
+					Call(Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "WithLogger").Call(Qual("github.com/Clever/kayvee-go/v7/logger", "NewConcreteLogger").Call(Lit(fmt.Sprintf("%s-wagclient", d)))),
+						Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "WithExporter").Call(Id("exp")),
+						Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "WithInstrumentor").Call(Qual("github.com/Clever/wag/tracing", "InstrumentedTransport")),
+					),
 				If(Err().Op("!=").Nil()).Block(
 					Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
 				),
@@ -264,7 +272,11 @@ func main() {
 	lines = append(lines, ret)
 
 	f.Comment("InitLaunchConfig creates a LaunchConfig")
-	f.Func().Id("InitLaunchConfig").Params().Id("LaunchConfig").Block(lines...)
+	initLaunchConfigParams := []Code{}
+	if *needWagV9Clients {
+		initLaunchConfigParams = append(initLaunchConfigParams, Id("exp *").Qual("go.opentelemetry.io/otel/sdk/trace", "SpanExporter"))
+	}
+	f.Func().Id("InitLaunchConfig").Params(initLaunchConfigParams...).Id("LaunchConfig").Block(lines...)
 
 	f.Comment(`requireEnvVar exits the program immediately if an env var is not set`)
 	f.Func().Id("requireEnvVar").Params(Id("s").String()).String().Block(
