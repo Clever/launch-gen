@@ -1,7 +1,7 @@
 package packagename
 
 import (
-	client1 "github.com/Clever/dapple/gen-go/client"
+	v5 "github.com/Clever/dapple/gen-go/client/v5"
 	logger "github.com/Clever/kayvee-go/v7/logger"
 	client "github.com/Clever/workflow-manager/gen-go/client"
 	"log"
@@ -20,7 +20,7 @@ type LaunchConfig struct {
 // Dependencies has clients for the service's dependencies
 type Dependencies struct {
 	WorkflowManager client.Client
-	Dapple          client1.Client
+	Dapple          v5.Client
 }
 
 // Environment has environment variables and their values
@@ -43,7 +43,7 @@ func InitLaunchConfig() LaunchConfig {
 	if err != nil {
 		log.Fatalf("discovery error: %s", err)
 	}
-	dapple, err := client1.NewFromDiscovery(client1.WithLogger(logger.NewConcreteLogger("dapple-wagclient")))
+	dapple, err := v5.NewFromDiscovery(v5.WithLogger(logger.NewConcreteLogger("dapple-wagclient")))
 	if err != nil {
 		log.Fatalf("discovery error: %s", err)
 	}
