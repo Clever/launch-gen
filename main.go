@@ -157,7 +157,13 @@ func main() {
 			importPackage = d
 		}
 
-		depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", importPackage), "Client"))
+		// Wag V9 clients have the version after 'client', so the '/gen-go/client' must be part of the override already
+		depPathSuffix := "/gen-go/client"
+		if ok && *needWagV9Clients {
+			depPathSuffix = ""
+		}
+
+		depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s%s", importPackage, depPathSuffix), "Client"))
 		depsInitDict[Id(strings.Title(toPublicVar(d)))] = Id(toPrivateVar(d))
 	}
 	f.Comment("Dependencies has clients for the service's dependencies")
@@ -221,10 +227,15 @@ func main() {
 
 		var c []Code
 		if *needWagV9Clients {
+			// Wag V9 clients have the version after 'client', so the '/gen-go/client' must be part of the override already
+			depPathSuffix := "/gen-go/client"
+			if ok && *needWagV9Clients {
+				depPathSuffix = ""
+			}
 			c = []Code{
 				List(Id(toPrivateVar(d)), Err()).Op(":=").
-					Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "NewFromDiscovery").
-					Call(Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "WithLogger").
+					Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "NewFromDiscovery").
+					Call(Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "WithLogger").
 						Call(Qual("github.com/Clever/kayvee-go/v7/logger", "NewConcreteLogger").
 							Call(Lit(fmt.Sprintf("%s-wagclient", d))))),
 				If(Err().Op("!=").Nil()).Block(
