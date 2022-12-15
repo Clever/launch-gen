@@ -212,8 +212,15 @@ func main() {
 	////////////////////
 	// InitLaunchConfig() function
 	////////////////////
+	atLeastOneDep := false
+	for _, d := range t.Dependencies {
+		if _, skipped := skipDependencies[d]; !skipped {
+			atLeastOneDep = true
+			break
+		}
+	}
 	lines := []Code{}
-	if *needWagV9Clients && len(t.Dependencies) > 0 {
+	if atLeastOneDep && *needWagV9Clients {
 		lines = append(lines, []Code{
 			Id("var exporter ").Qual("go.opentelemetry.io/otel/sdk/trace", "SpanExporter"),
 			If(Id("exp").Op("==").Nil().Block(
