@@ -216,7 +216,8 @@ func main() {
 	if *needWagV9Clients {
 		lines = append(lines, []Code{
 			If(Id("exp").Op("==").Nil().Block(
-				Id("*exp").Op("=").Qual("go.opentelemetry.io/otel/sdk/trace/tracetest", "NewNoopExporter").Call(),
+				Id("exporter").Op(":=").Qual("go.opentelemetry.io/otel/sdk/trace/tracetest", "NewNoopExporter").Call(),
+				Id("exp").Op("=").Id("&exporter"),
 			)),
 		}...)
 	}

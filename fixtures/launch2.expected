@@ -43,7 +43,8 @@ type AwsResources struct {
 // InitLaunchConfig creates a LaunchConfig
 func InitLaunchConfig(exp *trace.SpanExporter) LaunchConfig {
 	if exp == nil {
-		*exp = tracetest.NewNoopExporter()
+		exporter := tracetest.NewNoopExporter()
+		exp = &exporter
 	}
 	workflowManager, err := client.NewFromDiscovery(client.WithLogger(logger.NewConcreteLogger("workflow-manager-wagclient")), client.WithExporter(*exp), client.WithInstrumentor(tracing.InstrumentedTransport))
 	if err != nil {
