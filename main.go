@@ -213,7 +213,7 @@ func main() {
 	// InitLaunchConfig() function
 	////////////////////
 	lines := []Code{}
-	if *needWagV9Clients {
+	if *needWagV9Clients && len(t.Dependencies) > 0 {
 		lines = append(lines, []Code{
 			Id("var exporter ").Qual("go.opentelemetry.io/otel/sdk/trace", "SpanExporter"),
 			If(Id("exp").Op("==").Nil().Block(
