@@ -42,15 +42,17 @@ type AwsResources struct {
 
 // InitLaunchConfig creates a LaunchConfig
 func InitLaunchConfig(exp *trace.SpanExporter) LaunchConfig {
+	var exporter trace.SpanExporter
 	if exp == nil {
-		exporter := tracetest.NewNoopExporter()
-		exp = &exporter
+		exporter = tracetest.NewNoopExporter()
+	} else {
+		exporter = *exp
 	}
-	workflowManager, err := client.NewFromDiscovery(client.WithLogger(logger.NewConcreteLogger("workflow-manager-wagclient")), client.WithExporter(*exp), client.WithInstrumentor(tracing.InstrumentedTransport))
+	workflowManager, err := client.NewFromDiscovery(client.WithLogger(logger.NewConcreteLogger("workflow-manager-wagclient")), client.WithExporter(exporter), client.WithInstrumentor(tracing.InstrumentedTransport))
 	if err != nil {
 		log.Fatalf("discovery error: %s", err)
 	}
-	dapple, err := v5.NewFromDiscovery(v5.WithLogger(logger.NewConcreteLogger("dapple-wagclient")), v5.WithExporter(*exp), v5.WithInstrumentor(tracing.InstrumentedTransport))
+	dapple, err := v5.NewFromDiscovery(v5.WithLogger(logger.NewConcreteLogger("dapple-wagclient")), v5.WithExporter(exporter), v5.WithInstrumentor(tracing.InstrumentedTransport))
 	if err != nil {
 		log.Fatalf("discovery error: %s", err)
 	}

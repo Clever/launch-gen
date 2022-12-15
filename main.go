@@ -215,10 +215,12 @@ func main() {
 	lines := []Code{}
 	if *needWagV9Clients {
 		lines = append(lines, []Code{
+			Id("var exporter ").Qual("go.opentelemetry.io/otel/sdk/trace", "SpanExporter"),
 			If(Id("exp").Op("==").Nil().Block(
-				Id("exporter").Op(":=").Qual("go.opentelemetry.io/otel/sdk/trace/tracetest", "NewNoopExporter").Call(),
-				Id("exp").Op("=").Id("&exporter"),
-			)),
+				Id("exporter").Op("=").Qual("go.opentelemetry.io/otel/sdk/trace/tracetest", "NewNoopExporter").Call(),
+			)).Else().Block(
+				Id("exporter").Op("=").Id("*exp"),
+			),
 		}...)
 	}
 	// Setup a wag client for each dependency
@@ -244,7 +246,7 @@ func main() {
 				List(Id(toPrivateVar(d)), Err()).Op(":=").
 					Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "NewFromDiscovery").
 					Call(Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "WithLogger").Call(Qual("github.com/Clever/kayvee-go/v7/logger", "NewConcreteLogger").Call(Lit(fmt.Sprintf("%s-wagclient", d)))),
-						Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "WithExporter").Call(Id("*exp")),
+						Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "WithExporter").Call(Id("exporter")),
 						Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "WithInstrumentor").Call(Qual("github.com/Clever/wag/tracing", "InstrumentedTransport")),
 					),
 				If(Err().Op("!=").Nil()).Block(
@@ -303,7 +305,6 @@ func main() {
 		),
 		Return(Id("s").Op("+").Lit("-dev")),
 	)
-
 	err = f.Render(output)
 	if err != nil {
 		panic(err)
