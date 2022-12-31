@@ -74,3 +74,4 @@ generate:
 6. Run `make generate`. `launch.go` should be within the specified directory.
 
 7. Call `InitLaunchConfig()` during startup of your program, and use it when needed.
+test
