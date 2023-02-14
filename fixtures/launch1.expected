@@ -2,7 +2,10 @@ package packagename
 
 import (
 	client1 "github.com/Clever/dapple/gen-go/client"
+	v9 "github.com/Clever/wag/clientconfig/v9"
 	client "github.com/Clever/workflow-manager/gen-go/client"
+	trace "go.opentelemetry.io/otel/sdk/trace"
+	tracetest "go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"log"
 	"os"
 )
@@ -37,12 +40,18 @@ type AwsResources struct {
 }
 
 // InitLaunchConfig creates a LaunchConfig
-func InitLaunchConfig() LaunchConfig {
-	workflowManager, err := client.NewFromDiscovery()
+func InitLaunchConfig(exp *trace.SpanExporter) LaunchConfig {
+	var exporter trace.SpanExporter
+	if exp == nil {
+		exporter = tracetest.NewNoopExporter()
+	} else {
+		exporter = *exp
+	}
+	workflowManager, err := client.NewFromDiscovery(v9.WithTracing("workflow-manager", exporter))
 	if err != nil {
 		log.Fatalf("discovery error: %s", err)
 	}
-	dapple, err := client1.NewFromDiscovery()
+	dapple, err := client1.NewFromDiscovery(v9.WithTracing("dapple", exporter))
 	if err != nil {
 		log.Fatalf("discovery error: %s", err)
 	}

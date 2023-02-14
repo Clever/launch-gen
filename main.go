@@ -100,7 +100,6 @@ func main() {
 	t := LaunchYML{}
 	packageName := flag.String("p", "main", "optional package name")
 	outputFile := flag.String("o", "", "optional output to file. Default is stdout")
-	needWagV9Clients := flag.Bool("wagv9", false, "optional param to create all wag clients as wag v9 clients")
 	var skipDependencies flagsSet = map[string]bool{}
 	flag.Var(&skipDependencies, "skip-dependency", "Dependency to skip generating wag clients. Can be added mulitple times e.g. -skip-dependency a -skip-dependency b")
 	overrideDependenciesString := flag.String("d", "", "Dependency name to override. You can provide multiple dependencies in the format dep1:replacementDep1,dep2:replacementDep2,...")
@@ -152,15 +151,15 @@ func main() {
 			continue
 		}
 
-		importPackage, ok := overrideDependenciesMap[d]
-		if !ok {
-			importPackage = d
-		}
-
-		// Wag V9 clients have the version after 'client', so the '/gen-go/client' must be part of the override already
+		// with wagv9 onwards the following string is after the service name in the path
 		depPathSuffix := "/gen-go/client"
-		if ok && *needWagV9Clients {
+
+		importPackage, hasOverride := overrideDependenciesMap[d]
+		if hasOverride {
+			// Clients have the version after '/client', so the '/gen-go/client' must be part of the path override already
 			depPathSuffix = ""
+		} else {
+			importPackage = d
 		}
 
 		depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s%s", importPackage, depPathSuffix), "Client"))
@@ -220,7 +219,7 @@ func main() {
 		}
 	}
 	lines := []Code{}
-	if atLeastOneDep && *needWagV9Clients {
+	if atLeastOneDep {
 		lines = append(lines, []Code{
 			Id("var exporter ").Qual("go.opentelemetry.io/otel/sdk/trace", "SpanExporter"),
 			If(Id("exp").Op("==").Nil().Block(
@@ -236,37 +235,25 @@ func main() {
 			continue
 		}
 
+		// with wagv9 onwards the following string is after the service name in the path
+		depPathSuffix := "/gen-go/client"
+
 		// checking to see if the dependency name has to be overwritten
-		replacementString, ok := overrideDependenciesMap[d]
-		if !ok {
-			replacementString = d
+		depName, hasOverride := overrideDependenciesMap[d]
+		if hasOverride {
+			// Clients have the version after '/client', so the '/gen-go/client' must be part of the path override already
+			depPathSuffix = ""
+		} else {
+			depName = d
 		}
 
-		var c []Code
-		if *needWagV9Clients {
-			// Wag V9 clients have the version after 'client', so the '/gen-go/client' must be part of the override already
-			depPathSuffix := "/gen-go/client"
-			if ok && *needWagV9Clients {
-				depPathSuffix = ""
-			}
-			c = []Code{
-				List(Id(toPrivateVar(d)), Err()).Op(":=").
-					Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "NewFromDiscovery").
-					Call(Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "WithLogger").Call(Qual("github.com/Clever/kayvee-go/v7/logger", "NewConcreteLogger").Call(Lit(fmt.Sprintf("%s-wagclient", d)))),
-						Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "WithExporter").Call(Id("exporter")),
-						Qual(fmt.Sprintf("github.com/Clever/%s%s", replacementString, depPathSuffix), "WithInstrumentor").Call(Qual("github.com/Clever/wag/tracing", "InstrumentedTransport")),
-					),
-				If(Err().Op("!=").Nil()).Block(
-					Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
-				),
-			}
-		} else {
-			c = []Code{
-				List(Id(toPrivateVar(d)), Err()).Op(":=").Qual(fmt.Sprintf("github.com/Clever/%s/gen-go/client", replacementString), "NewFromDiscovery").Call(),
-				If(Err().Op("!=").Nil()).Block(
-					Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
-				),
-			}
+		c := []Code{
+			List(Id(toPrivateVar(d)), Err()).Op(":=").
+				Qual(fmt.Sprintf("github.com/Clever/%s%s", depName, depPathSuffix), "NewFromDiscovery").
+				Call(Qual("github.com/Clever/wag/clientconfig/v9", "WithTracing").Call(Lit(d), Id("exporter"))),
+			If(Err().Op("!=").Nil()).Block(
+				Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
+			),
 		}
 
 		lines = append(lines, c...)
@@ -282,10 +269,8 @@ func main() {
 	lines = append(lines, ret)
 
 	f.Comment("InitLaunchConfig creates a LaunchConfig")
-	initLaunchConfigParams := []Code{}
-	if *needWagV9Clients {
-		initLaunchConfigParams = append(initLaunchConfigParams, Id("exp *").Qual("go.opentelemetry.io/otel/sdk/trace", "SpanExporter"))
-	}
+	initLaunchConfigParams := []Code{Id("exp *").Qual("go.opentelemetry.io/otel/sdk/trace", "SpanExporter")}
+
 	f.Func().Id("InitLaunchConfig").Params(initLaunchConfigParams...).Id("LaunchConfig").Block(lines...)
 
 	f.Comment(`requireEnvVar exits the program immediately if an env var is not set`)
