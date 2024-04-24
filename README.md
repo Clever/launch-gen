@@ -2,6 +2,23 @@
 
 Generate code from launch YML
 
+1. [Running](#running)
+2. [Migrating to use in a Golang repo](#migrating-to-use-in-a-golang-repo)
+3. [Dependency overrides](#dependency-overrides)
+
+```sh
+$ launch-gen --help
+Usage of ./bin/launch-gen:
+  -d string
+        Dependency name to override. You can provide multiple dependencies in the format dep1:replacementDep1,dep2:replacementDep2,...
+  -o string
+        optional output to file. Default is stdout
+  -p string
+        optional package name (default "main")
+  -skip-dependency value
+        Dependency to skip generating wag clients. Can be added mulitple times e.g. -skip-dependency a -skip-dependency b
+```
+
 ## Running
 
 Build it
@@ -74,3 +91,17 @@ generate:
 6. Run `make generate`. `launch.go` should be within the specified directory.
 
 7. Call `InitLaunchConfig()` during startup of your program, and use it when needed.
+
+## Dependency overrides
+
+You can optionally override the package name for a service client dependency with the `-d` arg. Specifying `-d` will change the import statement in the generated `launch.go`. The primary use case for this arg is to handle modules which have the major version in their module name, because they will not be generated correctly by default.
+
+Dependency mappings are defined as a colon-separated pair of strings, as in `configuredDependency:replacementDependency`. You can specify multiple overrides with a comma-separated string of these mappings: `dependency1:replacementDependency1,dependency2:replacementDependency2`.
+
+Since `launch.go` depends on the `client` package within each module, `launch-gen` appends a `/gen-go/client` suffix to the module name to specific the service's client package. If you override the dependency, you **must** specify the whole package path yourself; `launch-gen` will not automatically insert the `/gen-go/client` path into the override package name, since it cannot assume any particular format.
+
+```sh
+$ launch-gen -d "servica-a:service-a/gen-go/client/v4,service-b:api-b-client/special/unique/client"
+# service-a -> github.com/Clever/service-a/gen-go/client/v4
+# service-b -> github.com/Clever/api-b-client/special/unique/client
+```
