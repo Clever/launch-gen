@@ -2,6 +2,7 @@ package packagename
 
 import (
 	v5 "github.com/Clever/dapple/gen-go/client/v5"
+	v2 "github.com/Clever/il-config-service/gen-go/client/v2"
 	v9 "github.com/Clever/wag/clientconfig/v9"
 	client "github.com/Clever/workflow-manager/gen-go/client"
 	trace "go.opentelemetry.io/otel/sdk/trace"
@@ -23,6 +24,7 @@ type LaunchConfig struct {
 type Dependencies struct {
 	WorkflowManager client.Client
 	Dapple          v5.Client
+	IlConfigService v2.Client
 }
 
 // Environment has environment variables and their values
@@ -55,6 +57,10 @@ func InitLaunchConfig(exp *trace.SpanExporter) LaunchConfig {
 	if err != nil {
 		log.Fatalf("discovery error: %s", err)
 	}
+	ilConfigService, err := v2.NewFromDiscovery(v9.WithTracing("il-config-service", exporter))
+	if err != nil {
+		log.Fatalf("discovery error: %s", err)
+	}
 	return LaunchConfig{
 		AwsResources: AwsResources{
 			S3ReadAndWriteMe: getS3NameByEnv("read-and-write-me"),
@@ -63,6 +69,7 @@ func InitLaunchConfig(exp *trace.SpanExporter) LaunchConfig {
 		},
 		Deps: Dependencies{
 			Dapple:          dapple,
+			IlConfigService: ilConfigService,
 			WorkflowManager: workflowManager,
 		},
 		Env: Environment{
