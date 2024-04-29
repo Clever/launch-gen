@@ -6,6 +6,7 @@ dependencies:
   - workflow-manager
   - dapple
   - dependency-to-skip
+  - il-config-service@v2
 aws:
   s3:
     read:

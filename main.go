@@ -60,42 +60,6 @@ func sortedKeys(m map[string]struct{}) []string {
 	return keys
 }
 
-func parseOverrideDependencies(overrideDependenciesString *string, dependencies []string) map[string]string {
-
-	// parsing through the list of overrides to make an original:new string map
-
-	overrideDependenciesMap := make(map[string]string)
-
-	if overrideDependenciesString == nil || *overrideDependenciesString == "" {
-		return overrideDependenciesMap
-	}
-
-	overrideDependenciesList := strings.Split(*overrideDependenciesString, ",")
-	for _, overrideRule := range overrideDependenciesList {
-		depReplacementArr := strings.Split(overrideRule, ":")
-
-		if len(depReplacementArr) != 2 || depReplacementArr[1] == "" {
-			log.Fatal("usage: invalid formatting for the -d flag")
-		}
-
-		flag := 0
-		for _, d := range dependencies {
-			if d == depReplacementArr[0] {
-				flag = 1
-				break
-			}
-		}
-
-		if flag == 0 {
-			log.Fatal(depReplacementArr[0], " is not a dependency specified in the provided yaml file")
-		}
-
-		overrideDependenciesMap[depReplacementArr[0]] = depReplacementArr[1]
-	}
-
-	return overrideDependenciesMap
-}
-
 func main() {
 	t := LaunchYML{}
 	packageName := flag.String("p", "main", "optional package name")
@@ -142,29 +106,15 @@ func main() {
 
 	// parseOverrideDependencies parses the list of dependencies to be overwritten into a map
 	overrideDependenciesMap := parseOverrideDependencies(overrideDependenciesString, t.Dependencies)
+	parsedDependencies := parseDependencies(&t, skipDependencies, overrideDependenciesMap)
+	depsStruct := mapDependenciesToCode(parsedDependencies)
 
 	// Dependencies
-	depsStruct := []Code{}
 	depsInitDict := Dict{}
-	for _, d := range t.Dependencies {
-		if _, ok := skipDependencies[d]; ok {
-			continue
-		}
-
-		// with wagv9 onwards the following string is after the service name in the path
-		depPathSuffix := "/gen-go/client"
-
-		importPackage, hasOverride := overrideDependenciesMap[d]
-		if hasOverride {
-			// Clients have the version after '/client', so the '/gen-go/client' must be part of the path override already
-			depPathSuffix = ""
-		} else {
-			importPackage = d
-		}
-
-		depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s%s", importPackage, depPathSuffix), "Client"))
-		depsInitDict[Id(strings.Title(toPublicVar(d)))] = Id(toPrivateVar(d))
+	for _, d := range parsedDependencies {
+		depsInitDict[Id(strings.Title(toPublicVar(d.name)))] = Id(toPrivateVar(d.name))
 	}
+
 	f.Comment("Dependencies has clients for the service's dependencies")
 	f.Type().Id("Dependencies").Struct(depsStruct...)
 
@@ -211,15 +161,8 @@ func main() {
 	////////////////////
 	// InitLaunchConfig() function
 	////////////////////
-	atLeastOneDep := false
-	for _, d := range t.Dependencies {
-		if _, skipped := skipDependencies[d]; !skipped {
-			atLeastOneDep = true
-			break
-		}
-	}
 	lines := []Code{}
-	if atLeastOneDep {
+	if len(parsedDependencies) > 0 {
 		lines = append(lines, []Code{
 			Id("var exporter ").Qual("go.opentelemetry.io/otel/sdk/trace", "SpanExporter"),
 			If(Id("exp").Op("==").Nil().Block(
@@ -230,27 +173,11 @@ func main() {
 		}...)
 	}
 	// Setup a wag client for each dependency
-	for _, d := range t.Dependencies {
-		if _, ok := skipDependencies[d]; ok {
-			continue
-		}
-
-		// with wagv9 onwards the following string is after the service name in the path
-		depPathSuffix := "/gen-go/client"
-
-		// checking to see if the dependency name has to be overwritten
-		depName, hasOverride := overrideDependenciesMap[d]
-		if hasOverride {
-			// Clients have the version after '/client', so the '/gen-go/client' must be part of the path override already
-			depPathSuffix = ""
-		} else {
-			depName = d
-		}
-
+	for _, d := range parsedDependencies {
 		c := []Code{
-			List(Id(toPrivateVar(d)), Err()).Op(":=").
-				Qual(fmt.Sprintf("github.com/Clever/%s%s", depName, depPathSuffix), "NewFromDiscovery").
-				Call(Qual("github.com/Clever/wag/clientconfig/v9", "WithTracing").Call(Lit(d), Id("exporter"))),
+			List(Id(toPrivateVar(d.name)), Err()).Op(":=").
+				Qual(d.packageName(), "NewFromDiscovery").
+				Call(Qual("github.com/Clever/wag/clientconfig/v9", "WithTracing").Call(Lit(d.name), Id("exporter"))),
 			If(Err().Op("!=").Nil()).Block(
 				Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
 			),
