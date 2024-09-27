@@ -17,6 +17,7 @@ type LaunchConfig struct {
 	Deps Dependencies
 	Env  Environment
 	AwsResources
+	ExternalUrlUsage
 }
 
 // Dependencies has clients for the service's dependencies
@@ -38,6 +39,9 @@ type AwsResources struct {
 	S3ReadMe         string
 	S3WriteMe        string
 }
+
+// ExternalUrlUsage uses discovery to generate urls for external services
+type ExternalUrlUsage struct{}
 
 // InitLaunchConfig creates a LaunchConfig
 func InitLaunchConfig(exp *trace.SpanExporter) LaunchConfig {
@@ -70,6 +74,7 @@ func InitLaunchConfig(exp *trace.SpanExporter) LaunchConfig {
 			EnvVarB:            requireEnvVar("ENV_VAR_B"),
 			TracingAccessToken: os.Getenv("TRACING_ACCESS_TOKEN"),
 		},
+		ExternalUrlUsage: ExternalUrlUsage{},
 	}
 }
 

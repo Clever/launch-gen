@@ -6,6 +6,9 @@ dependencies:
   - workflow-manager
   - dapple
   - dependency-to-skip
+externalUrlUsage:
+  - clever.com
+  - diagnostics-app.clever.com
 aws:
   s3:
     read:
