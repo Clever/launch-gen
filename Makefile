@@ -8,7 +8,7 @@ EXECUTABLE = $(shell basename $(PKG))
 
 .PHONY: test $(PKGS) run install_deps build fixtures
 
-$(eval $(call golang-version-check,1.13))
+$(eval $(call golang-version-check,1.21))
 
 fixtures: build
 	rm -f fixtures/*.expected
@@ -25,8 +25,8 @@ build:
 run: build
 	bin/launch-gen
 
-$(PKGS): golang-test-all-deps
-	$(call golang-test-all,$@)
+$(PKGS): golang-test-all-strict-cover-deps golang-setup-coverage
+	$(call golang-test-all-strict-cover,$@)
 
 install_deps:
 	go mod vendor
