@@ -8,7 +8,7 @@ EXECUTABLE = $(shell basename $(PKG))
 
 .PHONY: test $(PKGS) run install_deps build fixtures
 
-$(eval $(call golang-version-check,1.21))
+$(eval $(call golang-version-check,1.24))
 
 fixtures: build
 	rm -f fixtures/*.expected
