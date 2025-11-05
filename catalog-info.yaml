@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: launch-gen
+  description: Generate config package from launch YML file
+  owner: unknown
+spec:
+  type: unknown
+  lifecycle: production
+  owner: unknown
+  system: Clever
