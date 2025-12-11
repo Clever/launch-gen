@@ -282,7 +282,7 @@ func main() {
 		Return(Id("val")),
 	)
 
-	f.Comment(`getS3NameByEnv adds "-dev" to an env var name unless we're in "production" deploy env`)
+	f.Comment(`getS3NameByEnv adds "-dev" to an env var name unless we're in "production" deploy env, and appends _POD_ACCOUNT if the account is in podAccountSuffixMap`)
 	f.Comment(`We check both DEPLOY_ENV and _DEPLOY_ENV env vars, which are injected by our deployment system for Lambda and non-Lambda deployments, respectively`)
 	f.Func().Id(funcGetS3NameByEnv).Params(Id("s").String()).String().Block(
 		Id("env").Op(":=").Qual("os", "Getenv").Call(Lit("DEPLOY_ENV")),
@@ -295,8 +295,20 @@ func main() {
 		If(Id("env").Op("==").Lit("production")).Block(
 			Return(Id("s")),
 		),
+		Id("podAccount").Op(":=").Qual("os", "Getenv").Call(Lit("_POD_ACCOUNT")),
+		If(Id("podAccount").Op("!=").Lit("").Op("&&").Id("podAccountSuffixMap").Index(Id("podAccount"))).Block(
+			Return(Id("s").Op("+").Lit("-dev-").Op("+").Id("podAccount")),
+		),
 		Return(Id("s").Op("+").Lit("-dev")),
 	)
+
+	// Generate podAccountMap with the configured accounts (not user-configurable)
+	mapValues := Dict{}
+	for account := range podAccountSuffixMap {
+		mapValues[Lit(account)] = True()
+	}
+	f.Var().Id("podAccountSuffixMap").Op("=").Map(String()).Bool().Values(mapValues)
+
 	err = f.Render(output)
 	if err != nil {
 		panic(err)
@@ -304,7 +316,10 @@ func main() {
 }
 
 var (
-	varOverrides []varOverride
+	varOverrides        []varOverride
+	podAccountSuffixMap = map[string]bool{
+		"585008086734": true, // dev workload account
+	}
 )
 
 type varOverride struct {
