@@ -2,6 +2,7 @@ package packagename
 
 import (
 	client1 "github.com/Clever/dapple/gen-go/client"
+	discoverygo "github.com/Clever/discovery-go"
 	v9 "github.com/Clever/wag/clientconfig/v9"
 	client "github.com/Clever/workflow-manager/gen-go/client"
 	trace "go.opentelemetry.io/otel/sdk/trace"
@@ -17,6 +18,7 @@ type LaunchConfig struct {
 	Deps Dependencies
 	Env  Environment
 	AwsResources
+	ExternalUrlUsage
 }
 
 // Dependencies has clients for the service's dependencies
@@ -39,6 +41,12 @@ type AwsResources struct {
 	S3WriteMe        string
 }
 
+// ExternalUrlUsage uses discovery to generate urls for external services
+type ExternalUrlUsage struct {
+	CleverCom               string
+	DiagnosticsAppCleverCom string
+}
+
 // InitLaunchConfig creates a LaunchConfig
 func InitLaunchConfig(exp *trace.SpanExporter) LaunchConfig {
 	var exporter trace.SpanExporter
@@ -52,6 +60,14 @@ func InitLaunchConfig(exp *trace.SpanExporter) LaunchConfig {
 		log.Fatalf("discovery error: %s", err)
 	}
 	dapple, err := client1.NewFromDiscovery(v9.WithTracing("dapple", exporter))
+	if err != nil {
+		log.Fatalf("discovery error: %s", err)
+	}
+	cleverCom, err := discoverygo.ExternalURL("clever.com")
+	if err != nil {
+		log.Fatalf("discovery error: %s", err)
+	}
+	diagnosticsAppCleverCom, err := discoverygo.ExternalURL("diagnostics-app.clever.com")
 	if err != nil {
 		log.Fatalf("discovery error: %s", err)
 	}
@@ -69,6 +85,10 @@ func InitLaunchConfig(exp *trace.SpanExporter) LaunchConfig {
 			EnvVarA:            requireEnvVar("ENV_VAR_A"),
 			EnvVarB:            requireEnvVar("ENV_VAR_B"),
 			TracingAccessToken: os.Getenv("TRACING_ACCESS_TOKEN"),
+		},
+		ExternalUrlUsage: ExternalUrlUsage{
+			CleverCom:               cleverCom,
+			DiagnosticsAppCleverCom: diagnosticsAppCleverCom,
 		},
 	}
 }

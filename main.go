@@ -15,9 +15,10 @@ import (
 
 // LaunchYML Schema
 type LaunchYML struct {
-	Env          []string `yaml:"env"`
-	Dependencies []string `yaml:"dependencies"`
-	Aws          struct {
+	Env              []string `yaml:"env"`
+	Dependencies     []string `yaml:"dependencies"`
+	ExternalUrlUsage []string `yaml:"externalUrlUsage"`
+	Aws              struct {
 		S3 struct {
 			Read  []string `json:"read"`
 			Write []string `json:"write"`
@@ -138,6 +139,7 @@ func main() {
 		Id("Deps").Id("Dependencies"),
 		Id("Env").Id("Environment"),
 		Id("AwsResources"),
+		Id("ExternalUrlUsage"),
 	)
 
 	// parseOverrideDependencies parses the list of dependencies to be overwritten into a map
@@ -208,6 +210,17 @@ func main() {
 	f.Comment("AwsResources contains string IDs that will help for accessing various AWS resources")
 	f.Type().Id("AwsResources").Struct(awsStruct...)
 
+	// External URL usage
+	externalUrlStruct := []Code{}
+	externalUrlInitDict := Dict{}
+	for _, s := range t.ExternalUrlUsage {
+		externalUrlStruct = append(externalUrlStruct, List(Id(toPublicVar(s))).String())
+		externalUrlInitDict[Id(toPublicVar(s))] = Id(toPrivateVar(s))
+	}
+
+	f.Comment("ExternalUrlUsage uses discovery to generate urls for external services")
+	f.Type().Id("ExternalUrlUsage").Struct(externalUrlStruct...)
+
 	////////////////////
 	// InitLaunchConfig() function
 	////////////////////
@@ -259,11 +272,26 @@ func main() {
 		lines = append(lines, c...)
 	}
 
+	// setup external url discovery for each dependency
+	for _, s := range t.ExternalUrlUsage {
+		c := []Code{
+			List(Id(toPrivateVar(s)), Err()).Op(":=").
+				Qual("github.com/Clever/discovery-go", "ExternalURL").
+				Call(Lit(s)),
+			If(Err().Op("!=").Nil()).Block(
+				Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
+			),
+		}
+
+		lines = append(lines, c...)
+	}
+
 	// Return the full launch Config
 	ret := Return(Id("LaunchConfig").Values(Dict{
-		Id("Deps"):         Id("Dependencies").Values(depsInitDict),
-		Id("Env"):          Id("Environment").Values(envInitDict),
-		Id("AwsResources"): Id("AwsResources").Values(awsInitDict),
+		Id("Deps"):             Id("Dependencies").Values(depsInitDict),
+		Id("Env"):              Id("Environment").Values(envInitDict),
+		Id("AwsResources"):     Id("AwsResources").Values(awsInitDict),
+		Id("ExternalUrlUsage"): Id("ExternalUrlUsage").Values(externalUrlInitDict),
 	}))
 
 	lines = append(lines, ret)
@@ -347,16 +375,12 @@ func init() {
 
 // FOO_BAR => FooBar
 // foo-bar => FooBar
+// foo.bar => FooBar
 // foo => Foo
 func toPublicVar(s string) string {
-	list := []string{}
-	if strings.Contains(s, "_") {
-		list = strings.Split(s, "_")
-	} else if strings.Contains(s, "-") {
-		list = strings.Split(s, "-")
-	} else {
-		list = []string{s}
-	}
+	s = strings.ReplaceAll(strings.ToUpper(s), ".", "_")
+	s = strings.ReplaceAll(strings.ToUpper(s), "-", "_")
+	list := strings.Split(s, "_")
 
 	titledVar := ""
 	for _, i := range list {

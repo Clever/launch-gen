@@ -25,6 +25,11 @@ func Test_toPublicVar(t *testing.T) {
 			expected: "FooBar",
 		},
 		{
+			name:     "changes names with .",
+			input:    "foo.bar",
+			expected: "FooBar",
+		},
+		{
 			name:     "respects Url -> URL override",
 			input:    "foo_bar_url",
 			expected: "FooBarURL",
@@ -62,6 +67,11 @@ func Test_toPrivateVar(t *testing.T) {
 		{
 			name:     "changes names with -",
 			input:    "foo-bar",
+			expected: "fooBar",
+		},
+		{
+			name:     "changes names with .",
+			input:    "foo.bar",
 			expected: "fooBar",
 		},
 		{
