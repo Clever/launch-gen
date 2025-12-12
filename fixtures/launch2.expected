@@ -87,7 +87,7 @@ func requireEnvVar(s string) string {
 	return val
 }
 
-// getS3NameByEnv adds "-dev" to an env var name unless we're in "production" deploy env
+// getS3NameByEnv adds "-dev" to an env var name unless we're in "production" deploy env, and appends _POD_ACCOUNT if the account is in podAccountSuffixMap
 // We check both DEPLOY_ENV and _DEPLOY_ENV env vars, which are injected by our deployment system for Lambda and non-Lambda deployments, respectively
 func getS3NameByEnv(s string) string {
 	env := os.Getenv("DEPLOY_ENV")
@@ -100,5 +100,11 @@ func getS3NameByEnv(s string) string {
 	if env == "production" {
 		return s
 	}
+	podAccount := os.Getenv("_POD_ACCOUNT")
+	if podAccount != "" && podAccountSuffixMap[podAccount] {
+		return s + "-dev-" + podAccount
+	}
 	return s + "-dev"
 }
+
+var podAccountSuffixMap = map[string]bool{"585008086734": true}
