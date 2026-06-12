@@ -2,12 +2,10 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"sort"
-	"strings"
 
 	. "github.com/dave/jennifer/jen"
 	"github.com/go-yaml/yaml"
@@ -26,28 +24,6 @@ type LaunchYML struct {
 	} `json:"aws"`
 }
 
-type flagsSet map[string]bool
-
-func (fs *flagsSet) String() string {
-	if fs == nil {
-		return "nil"
-	}
-
-	values := make([]string, len(*fs))
-	i := 0
-	for k := range *fs {
-		values[i] = k
-		i++
-	}
-
-	return fmt.Sprintf("%s", values)
-}
-
-func (fs *flagsSet) Set(value string) error {
-	(*fs)[value] = true
-	return nil
-}
-
 const (
 	funcGetS3NameByEnv = "getS3NameByEnv"
 )
@@ -61,48 +37,15 @@ func sortedKeys(m map[string]struct{}) []string {
 	return keys
 }
 
-func parseOverrideDependencies(overrideDependenciesString *string, dependencies []string) map[string]string {
-
-	// parsing through the list of overrides to make an original:new string map
-
-	overrideDependenciesMap := make(map[string]string)
-
-	if overrideDependenciesString == nil || *overrideDependenciesString == "" {
-		return overrideDependenciesMap
-	}
-
-	overrideDependenciesList := strings.Split(*overrideDependenciesString, ",")
-	for _, overrideRule := range overrideDependenciesList {
-		depReplacementArr := strings.Split(overrideRule, ":")
-
-		if len(depReplacementArr) != 2 || depReplacementArr[1] == "" {
-			log.Fatal("usage: invalid formatting for the -d flag")
-		}
-
-		flag := 0
-		for _, d := range dependencies {
-			if d == depReplacementArr[0] {
-				flag = 1
-				break
-			}
-		}
-
-		if flag == 0 {
-			log.Fatal(depReplacementArr[0], " is not a dependency specified in the provided yaml file")
-		}
-
-		overrideDependenciesMap[depReplacementArr[0]] = depReplacementArr[1]
-	}
-
-	return overrideDependenciesMap
-}
-
 func main() {
 	t := LaunchYML{}
 	packageName := flag.String("p", "main", "optional package name")
 	outputFile := flag.String("o", "", "optional output to file. Default is stdout")
-	var skipDependencies flagsSet = map[string]bool{}
-	flag.Var(&skipDependencies, "skip-dependency", "Dependency to skip generating wag clients. Can be added mulitple times e.g. -skip-dependency a -skip-dependency b")
+	skipDependencies := map[string]bool{}
+	flag.Func("skip-dependency", "Dependency to skip generating wag clients. Can be added multiple times e.g. -skip-dependency a -skip-dependency b", func(s string) error {
+		skipDependencies[s] = true
+		return nil
+	})
 	overrideDependenciesString := flag.String("d", "", "Dependency name to override. You can provide multiple dependencies in the format dep1:replacementDep1,dep2:replacementDep2,...")
 	flag.Parse()
 
@@ -146,29 +89,7 @@ func main() {
 	overrideDependenciesMap := parseOverrideDependencies(overrideDependenciesString, t.Dependencies)
 
 	// Dependencies
-	depsStruct := []Code{}
-	depsInitDict := Dict{}
-	for _, d := range t.Dependencies {
-		if _, ok := skipDependencies[d]; ok {
-			continue
-		}
-
-		// with wagv9 onwards the following string is after the service name in the path
-		depPathSuffix := "/gen-go/client"
-
-		importPackage, hasOverride := overrideDependenciesMap[d]
-		if hasOverride {
-			// Clients have the version after '/client', so the '/gen-go/client' must be part of the path override already
-			depPathSuffix = ""
-		} else {
-			importPackage = d
-		}
-
-		depsStruct = append(depsStruct, Id(strings.Title(toPublicVar(d))).Qual(fmt.Sprintf("github.com/Clever/%s%s", importPackage, depPathSuffix), "Client"))
-		depsInitDict[Id(strings.Title(toPublicVar(d)))] = Id(toPrivateVar(d))
-	}
-	f.Comment("Dependencies has clients for the service's dependencies")
-	f.Type().Id("Dependencies").Struct(depsStruct...)
+	depsInitDict, depInitLines := generateDependencies(f, t.Dependencies, skipDependencies, overrideDependenciesMap)
 
 	// Environment
 	envStruct := []Code{}
@@ -224,53 +145,7 @@ func main() {
 	////////////////////
 	// InitLaunchConfig() function
 	////////////////////
-	atLeastOneDep := false
-	for _, d := range t.Dependencies {
-		if _, skipped := skipDependencies[d]; !skipped {
-			atLeastOneDep = true
-			break
-		}
-	}
-	lines := []Code{}
-	if atLeastOneDep {
-		lines = append(lines, []Code{
-			Id("var exporter ").Qual("go.opentelemetry.io/otel/sdk/trace", "SpanExporter"),
-			If(Id("exp").Op("==").Nil().Block(
-				Id("exporter").Op("=").Qual("go.opentelemetry.io/otel/sdk/trace/tracetest", "NewNoopExporter").Call(),
-			)).Else().Block(
-				Id("exporter").Op("=").Id("*exp"),
-			),
-		}...)
-	}
-	// Setup a wag client for each dependency
-	for _, d := range t.Dependencies {
-		if _, ok := skipDependencies[d]; ok {
-			continue
-		}
-
-		// with wagv9 onwards the following string is after the service name in the path
-		depPathSuffix := "/gen-go/client"
-
-		// checking to see if the dependency name has to be overwritten
-		depName, hasOverride := overrideDependenciesMap[d]
-		if hasOverride {
-			// Clients have the version after '/client', so the '/gen-go/client' must be part of the path override already
-			depPathSuffix = ""
-		} else {
-			depName = d
-		}
-
-		c := []Code{
-			List(Id(toPrivateVar(d)), Err()).Op(":=").
-				Qual(fmt.Sprintf("github.com/Clever/%s%s", depName, depPathSuffix), "NewFromDiscovery").
-				Call(Qual("github.com/Clever/wag/clientconfig/v9", "WithTracing").Call(Lit(d), Id("exporter"))),
-			If(Err().Op("!=").Nil()).Block(
-				Qual("log", "Fatalf").Call(List(Lit("discovery error: %s"), Err())),
-			),
-		}
-
-		lines = append(lines, c...)
-	}
+	lines := depInitLines
 
 	// setup external url discovery for each dependency
 	for _, s := range t.ExternalUrlUsage {
@@ -301,14 +176,7 @@ func main() {
 
 	f.Func().Id("InitLaunchConfig").Params(initLaunchConfigParams...).Id("LaunchConfig").Block(lines...)
 
-	f.Comment(`requireEnvVar exits the program immediately if an env var is not set`)
-	f.Func().Id("requireEnvVar").Params(Id("s").String()).String().Block(
-		List(Id("val"), Id("present")).Op(":=").Qual("os", "LookupEnv").Call(Id("s")),
-		If(Op("!").Id("present")).Block(
-			Qual("log", "Fatalf").Call(List(Lit("env var %s is not defined"), Id("s"))),
-		),
-		Return(Id("val")),
-	)
+	emitRequireEnvVar(f)
 
 	f.Comment(`getS3NameByEnv adds "-dev" to an env var name unless we're in "production" deploy env, and appends _POD_ACCOUNT if the account is in podAccountSuffixMap`)
 	f.Comment(`We check both DEPLOY_ENV and _DEPLOY_ENV env vars, which are injected by our deployment system for Lambda and non-Lambda deployments, respectively`)
@@ -343,74 +211,6 @@ func main() {
 	}
 }
 
-var (
-	varOverrides        []varOverride
-	podAccountSuffixMap = map[string]bool{
-		"585008086734": true, // dev workload account
-	}
-)
-
-type varOverride struct {
-	old string
-	new string
-}
-
-func init() {
-	// Golint complains if certain strings are not capitalized
-	varOverrides = []varOverride{
-		varOverride{
-			old: "Url",
-			new: "URL",
-		},
-		varOverride{
-			old: "Id",
-			new: "ID",
-		},
-		varOverride{
-			old: "Api",
-			new: "API",
-		},
-	}
-}
-
-// FOO_BAR => FooBar
-// foo-bar => FooBar
-// foo.bar => FooBar
-// foo => Foo
-func toPublicVar(s string) string {
-	s = strings.ReplaceAll(strings.ToUpper(s), ".", "_")
-	s = strings.ReplaceAll(strings.ToUpper(s), "-", "_")
-	list := strings.Split(s, "_")
-
-	titledVar := ""
-	for _, i := range list {
-		titledVar += strings.Title(strings.ToLower(i))
-	}
-
-	out := titledVar
-	for _, override := range varOverrides {
-		out = strings.Replace(out, override.old, override.new, 1)
-	}
-
-	return out
-}
-
-// FOO_BAR => fooBar
-// foo-bar => fooBar
-// foo => foo
-func toPrivateVar(s string) string {
-	if s == "" {
-		return s
-	}
-	out := toPublicVar(s)
-	return strings.ToLower(string(out[0])) + out[1:]
-}
-
-func contains(many []string, one string) bool {
-	for _, m := range many {
-		if m == one {
-			return true
-		}
-	}
-	return false
+var podAccountSuffixMap = map[string]bool{
+	"585008086734": true, // dev workload account
 }
