@@ -1,0 +1,16 @@
+env:
+  - name: ENV_VAR_A
+    value: ""
+  - name: ENV_VAR_B
+    value: ""
+  - name: TRACING_ACCESS_TOKEN
+    value: ""
+dependencies:
+  - workflow-manager
+  - dapple
+  - dependency-to-skip
+app:
+  name: my-app
+resources:
+  requests:
+    cpu: 100m

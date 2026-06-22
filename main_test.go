@@ -88,6 +88,36 @@ func Test_toPrivateVar(t *testing.T) {
 	}
 }
 
+func Test_toEnvVarName(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "simple domain",
+			input:    "clever.com",
+			expected: "CLEVER_COM",
+		},
+		{
+			name:     "subdomain with hyphens",
+			input:    "diagnostics-app.clever.com",
+			expected: "DIAGNOSTICS_APP_CLEVER_COM",
+		},
+		{
+			name:     "already uppercase",
+			input:    "CLEVER_COM",
+			expected: "CLEVER_COM",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := toEnvVarName(tt.input)
+			assert.Equal(t, tt.expected, actual, tt.name)
+		})
+	}
+}
+
 func Test_getS3NameByEnv(t *testing.T) {
 	// taken from generated fixtures
 	var podAccountSuffixMap = map[string]bool{"585008086734": true}

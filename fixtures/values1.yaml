@@ -1,0 +1,25 @@
+env:
+  - name: ENV_VAR_A
+    value: ""
+  - name: ENV_VAR_B
+    value: ""
+  - name: TRACING_ACCESS_TOKEN
+    value: ""
+secrets:
+  - name: SECRET_VAR
+    path: secret-var
+envOverrides:
+  - name: ENV_VAR_A
+    value: "overridden"
+dependencies:
+  - workflow-manager
+  - dapple
+  - dependency-to-skip
+externalUrlUsage:
+  - clever.com
+  - diagnostics-app.clever.com
+app:
+  name: my-app
+resources:
+  requests:
+    cpu: 100m

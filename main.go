@@ -16,6 +16,7 @@ func main() {
 		return nil
 	})
 	overrideDependenciesString := flag.String("d", "", "Dependency name to override. You can provide multiple dependencies in the format dep1:replacementDep1,dep2:replacementDep2,...")
+	kubernetes := flag.Bool("kubernetes", false, "generate from a clever-application values.yaml (Kubernetes) instead of launch.yml (Fargate)")
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {
@@ -37,7 +38,11 @@ func main() {
 		log.Fatalf("error: %v", err)
 	}
 
-	if err := generateFargate(*packageName, skipDependencies, *overrideDependenciesString, data, output); err != nil {
+	gen := generateFargate
+	if *kubernetes {
+		gen = generateKubernetes
+	}
+	if err := gen(*packageName, skipDependencies, *overrideDependenciesString, data, output); err != nil {
 		log.Fatal(err)
 	}
 }

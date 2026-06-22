@@ -14,10 +14,14 @@ fixtures: build
 	rm -f fixtures/*.expected
 	./bin/launch-gen -p packagename -skip-dependency dependency-to-skip fixtures/launch1.yml > fixtures/launch1.expected
 	./bin/launch-gen -p packagename -skip-dependency dependency-to-skip -d dapple:dapple/gen-go/client/v5 fixtures/launch2.yml > fixtures/launch2.expected
+	./bin/launch-gen -kubernetes -p packagename -skip-dependency dependency-to-skip fixtures/values1.yaml > fixtures/values1.expected
+	./bin/launch-gen -kubernetes -p packagename -skip-dependency dependency-to-skip -d dapple:dapple/gen-go/client/v5 fixtures/values2.yaml > fixtures/values2.expected
 
 test: build $(PKGS)
 	diff <(./bin/launch-gen -p packagename -skip-dependency dependency-to-skip fixtures/launch1.yml) fixtures/launch1.expected
 	diff <(./bin/launch-gen -p packagename -skip-dependency dependency-to-skip -d dapple:dapple/gen-go/client/v5 fixtures/launch2.yml) fixtures/launch2.expected
+	diff <(./bin/launch-gen -kubernetes -p packagename -skip-dependency dependency-to-skip fixtures/values1.yaml) fixtures/values1.expected
+	diff <(./bin/launch-gen -kubernetes -p packagename -skip-dependency dependency-to-skip -d dapple:dapple/gen-go/client/v5 fixtures/values2.yaml) fixtures/values2.expected
 
 build:
 	$(call golang-build,$(PKG),$(EXECUTABLE))
