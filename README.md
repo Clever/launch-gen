@@ -1,6 +1,6 @@
 # launch-gen
 
-Generate code from launch YML
+Generate code from launch YML (Fargate) or a clever-application `values.yaml` (Kubernetes).
 
 ## Running
 
@@ -10,11 +10,23 @@ Build it
 make build
 ```
 
-Run it
+Run it (Fargate — default)
 
 ```
-./bin/launch-gen <path-to-launch-yml>
+./bin/launch-gen <path-to-launch.yml>
 ```
+
+Run it (Kubernetes)
+
+```
+./bin/launch-gen -kubernetes <path-to-values.yaml>
+```
+
+### Kubernetes flag (`-kubernetes`)
+
+Pass `-kubernetes` to generate from a clever-application `values.yaml` instead of `launch.yml`. Reads `env`, `secrets`, `dependencies`, and `externalUrlUsage`; all other keys are ignored. Existing consumers are unaffected — opt in explicitly by adding `-kubernetes`.
+
+This flag will be deprecated once all apps have migrated to Kubernetes.
 
 ## Migrating to use in a Golang repo
 
