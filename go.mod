@@ -3,7 +3,7 @@ module github.com/Clever/launch-gen
 go 1.24
 
 require (
-	github.com/dave/jennifer v1.4.1
+	github.com/dave/jennifer v1.7.1
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/stretchr/testify v1.2.2
 )
