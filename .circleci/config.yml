@@ -21,3 +21,4 @@ workflows:
           context:
             - aws-lambda-private
             - aws-ecr-private
+            - github-app-auth
