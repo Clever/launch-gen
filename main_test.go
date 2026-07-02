@@ -231,22 +231,9 @@ func Test_getS3NameByEnv(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Save original environment
-			origDeployEnv := os.Getenv("DEPLOY_ENV")
-			origUnderscoreDeploy := os.Getenv("_DEPLOY_ENV")
-			origPodAccount := os.Getenv("_POD_ACCOUNT")
-
-			// Set test environment
-			os.Setenv("DEPLOY_ENV", tt.deployEnv)
-			os.Setenv("_DEPLOY_ENV", tt.underscoreDeploy)
-			os.Setenv("_POD_ACCOUNT", tt.podAccount)
-
-			// Clean up environment after test
-			defer func() {
-				os.Setenv("DEPLOY_ENV", origDeployEnv)
-				os.Setenv("_DEPLOY_ENV", origUnderscoreDeploy)
-				os.Setenv("_POD_ACCOUNT", origPodAccount)
-			}()
+			t.Setenv("DEPLOY_ENV", tt.deployEnv)
+			t.Setenv("_DEPLOY_ENV", tt.underscoreDeploy)
+			t.Setenv("_POD_ACCOUNT", tt.podAccount)
 
 			actual := testS3NameByEnv(tt.bucketName)
 			assert.Equal(t, tt.expected, actual, tt.name)

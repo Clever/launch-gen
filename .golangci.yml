@@ -1,0 +1,8 @@
+version: "2"
+
+issues:
+  new: true
+  new-from-merge-base: master
+
+run:
+  modules-download-mode: vendor

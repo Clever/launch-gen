@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"io/ioutil"
 	"log"
 	"os"
 )
@@ -29,11 +28,15 @@ func main() {
 		if err != nil {
 			log.Fatalf("error opening file '%s': %s", *outputFile, err)
 		}
-		defer f.Close()
+		defer func() {
+			if closeError := f.Close(); closeError != nil {
+				log.Fatalf("error closing file '%s': %s", *outputFile, closeError)
+			}
+		}()
 		output = f
 	}
 
-	data, err := ioutil.ReadFile(flag.Args()[0])
+	data, err := os.ReadFile(flag.Args()[0])
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
