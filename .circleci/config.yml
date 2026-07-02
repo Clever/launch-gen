@@ -1,6 +1,6 @@
 version: 2.1
 orbs:
-  clever: clever/circleci-orbs@0
+  clever: clever/circleci-orbs@dev:87718b641442a95fd41ff68a7654e768e25d1143
 
 workflows:
   build_test_publish:
@@ -17,7 +17,8 @@ workflows:
             - clever/go_lint
           filters:
             branches:
-              only: master
+              only: infra-419
           context:
             - aws-lambda-private
             - aws-ecr-private
+            - github-app-auth
