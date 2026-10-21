@@ -3,9 +3,9 @@ kind: Component
 metadata:
   name: launch-gen
   description: Generate config package from launch YML file
-  owner: unknown
+  owner: eng-infra
 spec:
   type: unknown
   lifecycle: production
-  owner: unknown
+  owner: eng-infra
   system: Clever
